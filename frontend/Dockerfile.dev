@@ -1,0 +1,7 @@
+# Local development image for the SvelteKit BFF. Source is bind-mounted; dependencies
+# install into a named volume on first start. Production uses adapter-cloudflare on
+# Cloudflare Pages (see README) or the multi-stage ./Dockerfile for a Node deployment.
+FROM node:24-alpine
+WORKDIR /app
+EXPOSE 5173
+CMD ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 5173"]
