@@ -1,0 +1,78 @@
+name: CI
+
+# DevSecOps pipeline: static analysis (SAST), dependency auditing, tests and type checks
+# run on every push/PR. A DAST template is included (commented) for dynamic scanning.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (SAST + tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, opcache, zip
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      - name: SAST — static analysis (PHPStan)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M
+
+      - name: Dependency vulnerability audit
+        run: composer audit
+        continue-on-error: true # report advisories without blocking the lab build
+
+      - name: Unit tests (PHPUnit)
+        run: php bin/phpunit
+
+  frontend:
+    name: Frontend (type check + audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (svelte-check)
+        run: npm run check
+
+      - name: Dependency vulnerability audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  # DAST — dynamic scanning (template). Uncomment to run OWASP ZAP against the running app.
+  # dast:
+  #   name: DAST (OWASP ZAP baseline)
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Start stack
+  #       run: docker compose up -d --build && sleep 60
+  #     - name: ZAP baseline scan
+  #       uses: zaproxy/action-baseline@v0.12.0
+  #       with:
+  #         target: 'http://localhost:5173'

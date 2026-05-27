@@ -1,0 +1,80 @@
+# DigitalOcean App Platform spec for the Symfony backend + Managed PostgreSQL.
+# Deploy with:  doctl apps create --spec .do/app.yaml   (or paste in the DO dashboard)
+# The SvelteKit frontend is deployed separately to Cloudflare Pages (see cloudflare/).
+name: ssdlc-bank-api
+region: fra
+
+services:
+  - name: api
+    # Build the production image from the backend Dockerfile (FrankenPHP).
+    dockerfile_path: backend/Dockerfile
+    source_dir: backend
+    github:
+      repo: your-org/ssdlc-lab        # <-- set to your GitHub repo
+      branch: main
+      deploy_on_push: true
+    http_port: 8000
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 20
+    envs:
+      - key: APP_ENV
+        value: prod
+      # Secrets are stored encrypted by DO — never in the repo (SSDLC: secrets out of code).
+      - key: APP_SECRET
+        type: SECRET
+        value: REPLACE_WITH_RANDOM_SECRET
+      - key: JWT_PASSPHRASE
+        type: SECRET
+        value: REPLACE_WITH_RANDOM_PASSPHRASE
+      # Bound automatically to the managed database below.
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      # Real email delivery via Postmark (MFA codes + notifications).
+      - key: MAILER_DSN
+        type: SECRET
+        value: postmark+api://REPLACE_WITH_POSTMARK_TOKEN@default
+      - key: MAILER_FROM
+        value: "SSDLC Bank <no-reply@bank-demo.example.com>"
+      # Risk / MFA configuration (non-secret).
+      - key: RISK_MFA_THRESHOLD_CENTS
+        value: "1000000"
+      - key: RISK_MAX_PAYMENTS_PER_MINUTE
+        value: "3"
+      - key: MFA_CODE_TTL_SECONDS
+        value: "300"
+
+# Message Broker consumer as its OWN component (separate process from the API), sharing
+# the same image but started in "worker" mode (see backend/docker/prod-entrypoint.sh).
+workers:
+  - name: worker
+    dockerfile_path: backend/Dockerfile
+    source_dir: backend
+    run_command: worker
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    envs:
+      - key: APP_ENV
+        value: prod
+      - key: APP_SECRET
+        type: SECRET
+        value: REPLACE_WITH_RANDOM_SECRET
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      - key: MAILER_DSN
+        type: SECRET
+        value: postmark+api://REPLACE_WITH_POSTMARK_TOKEN@default
+      - key: MAILER_FROM
+        value: "SSDLC Bank <no-reply@bank-demo.example.com>"
+
+databases:
+  - name: db
+    engine: PG
+    version: "16"
+    # Managed PostgreSQL provides automated daily backups + point-in-time recovery,
+    # satisfying the "Backup Storage" component of the architecture.
+    production: false

@@ -1,0 +1,12 @@
+# Cloudflare Pages security headers for the SvelteKit frontend (public DMZ layer).
+#
+# NOTE: the Content-Security-Policy is intentionally NOT set here. SvelteKit emits a
+# stronger, per-request nonce-based CSP for every HTML response (see kit.csp in
+# svelte.config.js). Adding a second, static CSP header would be intersected with it and
+# would block SvelteKit's nonced inline scripts. These headers cover everything else.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), camera=(), microphone=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
