@@ -14,7 +14,7 @@ class RiskServiceTest extends TestCase
 {
     private function service(int $recentCount): RiskService
     {
-        $repo = $this->createMock(TransactionRepository::class);
+        $repo = $this->createStub(TransactionRepository::class);
         $repo->method('countByUserSince')->willReturn($recentCount);
 
         // threshold 10,000.00 (1,000,000 cents), max 3 payments/minute

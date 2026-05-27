@@ -52,8 +52,8 @@ deploy target, **M** = mocked/simulated (labelled, with the production equivalen
 | 22 | KMS / Secrets Vault | C + D | Secrets in `.env.local`/env vars, JWT keys git-ignored → DO/Cloudflare encrypted env vars |
 | 23 | Backup Storage | C → D | `make db-backup` (`pg_dump`) → DO Managed backups / Spaces |
 | 24 | Audit Log (immutable events) | C | `audit_logs` table; PostgreSQL trigger `prevent_audit_log_mutation` blocks UPDATE/DELETE |
-| 25 | SIEM / Monitoring | C / M | Monolog `security` channel → JSON to stderr ("SIEM-ready") + admin audit page |
-| 26 | CI/CD + Security (SAST, DAST) | C | `.github/workflows/ci.yml`: PHPStan (SAST), composer/npm audit, PHPUnit, svelte-check; ZAP DAST template |
+| 25 | SIEM / Monitoring | C | **Sentry** (errors + tracing, backend `sentry.yaml` + frontend `hooks.*.ts`, no PII, inert until DSN set) + Monolog `security` channel → JSON to stderr ("SIEM-ready") + admin audit page |
+| 26 | CI/CD + Security (SAST, DAST) | C | `ci.yml`: PHPStan + **Semgrep** (SAST), composer/npm audit (SCA), PHPUnit, svelte-check; `dast.yml`: OWASP ZAP baseline (DAST) |
 | 27 | External Payment Systems | M | `ExternalPaymentGatewayInterface` + `ExternalPaymentGatewayMock` |
 | 28 | SMS / Email / Push Gateway | C / M | **Email is real** via Postmark (`postmark+api://`), captured by Mailpit locally; SMS/push remain mocked DB records |
 
@@ -83,6 +83,8 @@ notification **email**, and writes the `payment_completed` audit event.
   access passes through DMZ controls; BFF keeps tokens off the client.
 - **Development** — input validation, secrets out of code, no sensitive data in
   errors/logs (no passwords/CVV in audit metadata).
-- **Testing** — PHPUnit + svelte-check + SAST + dependency audit in CI; DAST template.
-- **Operation** — migrations, audit/SIEM logs, incident review via admin panel, backups
-  (`make db-backup` / DO Managed backups).
+- **Testing** — SAST (PHPStan + Semgrep), SCA (composer/npm audit), PHPUnit + svelte-check
+  in CI, and DAST (OWASP ZAP baseline) in `dast.yml`.
+- **Operation / maintenance** — Sentry error monitoring + tracing (inert until DSN set),
+  immutable audit/SIEM logs, incident review via the admin panel, and backups
+  (`make db-backup` / DigitalOcean Managed backups).

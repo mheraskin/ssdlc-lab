@@ -14,6 +14,7 @@ DigitalOcean) — and anything mocked is clearly labelled.
 | Backend API | **Symfony 7** (PHP 8.4) — modular monolith REST API |
 | Message broker | **Symfony Messenger** (Doctrine transport) consumed by a **separate worker** process |
 | Email | **Postmark** (prod) / **Mailpit** (local) via Symfony Mailer — real emailed MFA + notifications |
+| Monitoring | **Sentry** (errors + tracing, backend & frontend) + Monolog/stderr SIEM-ready logs |
 | Database | **PostgreSQL 16** |
 | Local orchestration | **Docker Compose** (db, backend, worker, frontend, mailpit) |
 | Production frontend | **Cloudflare Pages** (+ Cloudflare DNS / WAF / TLS / Anti-DDoS) |
@@ -106,8 +107,9 @@ Highlights:
 | Secrets out of code | `backend/.env` is **git-ignored** — only `backend/.env.example` is committed; JWT keys git-ignored; prod uses encrypted env vars |
 | Payment integrity | all checks server-side in `PaymentService` |
 | Error hygiene | `ApiExceptionSubscriber` hides internals in prod |
+| Error monitoring | **Sentry** on backend (`sentry.yaml`, no PII) and frontend (`hooks.*.ts`), wired through Monolog — inert until a DSN is set |
 | DB isolation | backend-only access; no public DB |
-| DevSecOps | GitHub Actions: PHPStan (SAST), audits, tests |
+| DevSecOps | GitHub Actions: SAST (PHPStan + **Semgrep**), `composer`/`npm audit`, tests; **DAST** via OWASP ZAP (`dast.yml`) |
 
 Check the live posture at `GET /api/security/config-check`.
 
@@ -166,9 +168,33 @@ make db-backup # pg_dump to ./backups (stands in for managed backups)
 make help      # list all targets
 ```
 
-## Testing & CI
+## SSDLC: security testing & maintenance
 
-- `make test` runs PHPUnit (backend) and `svelte-check` (frontend).
-- `make lint` runs PHPStan (SAST) and the type checker.
-- GitHub Actions (`.github/workflows/ci.yml`) runs SAST, dependency audits, tests and
-  type checks on every push/PR; a commented OWASP ZAP job provides the DAST step.
+**Security testing**
+- **SAST** — PHPStan (PHP) + **Semgrep** (`p/security-audit`, `p/secrets`, `p/php`,
+  `p/javascript`) across backend and frontend, in `ci.yml` on every push/PR.
+- **SCA (dependencies)** — `composer audit` + `npm audit` in CI.
+- **DAST** — OWASP **ZAP baseline** against the running BFF in `.github/workflows/dast.yml`
+  (run from the Actions tab or weekly): brings the stack up, scans `http://localhost:5173`.
+- **Tests** — **49 PHPUnit tests** (unit + functional) plus `svelte-check`; run with `make test`.
+  - *Unit*: risk rules, MFA (code hashing / expiry / attempt-lockout), input-validation
+    constraints, the account-ownership voter, and no-secret-leakage in API serialization.
+  - *Functional* (boot the kernel against an isolated test DB, transaction-rolled-back per
+    test via `dama/doctrine-test-bundle`): login / blocked users / **rate-limiting**,
+    account & transaction **isolation (IDOR)**, payments (debit, **cross-account 403**,
+    over-balance, validation, and the **full emailed-MFA flow** read from the captured
+    message), **admin RBAC**, security headers, JSON error handling, and **audit-log
+    immutability** at the DB level.
+
+**Maintenance**
+- **Logging & alerting** — **Sentry** captures errors + traces on both tiers (wired through
+  Monolog on the backend). It is fully configured and **only needs a DSN**:
+  ```bash
+  SENTRY_DSN=<backend-dsn> PUBLIC_SENTRY_DSN=<frontend-dsn> docker compose up -d
+  ```
+  Verify the backend wiring any time with `docker compose exec backend php bin/console sentry:test`.
+  No PII is sent (`send_default_pii: false`). Alongside Sentry, security events are emitted
+  as JSON to stderr (SIEM-ready) and stored in the immutable `audit_logs` table.
+- **Auditing** — append-only `audit_logs`, enforced immutable by a PostgreSQL trigger.
+- **Backups** — `make db-backup` (`pg_dump`) locally; DigitalOcean Managed PostgreSQL
+  provides automated daily backups + point-in-time recovery in production.
