@@ -1,0 +1,44 @@
+name: DAST
+
+# Dynamic Application Security Testing (SSDLC: security testing).
+# Spins up the full stack and runs an OWASP ZAP baseline scan against the running BFF.
+# Run on demand from the Actions tab, or weekly. Kept separate from CI because it is slow.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1' # Mondays 03:00 UTC
+
+permissions:
+  contents: read
+  issues: write # ZAP can file an issue with findings (optional)
+
+jobs:
+  zap-baseline:
+    name: OWASP ZAP baseline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start the stack
+        run: docker compose up -d --build
+
+      - name: Wait for the app to be ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:5173/login >/dev/null; then echo "frontend up"; exit 0; fi
+            sleep 5
+          done
+          echo "frontend did not become ready" && docker compose logs && exit 1
+
+      - name: ZAP baseline scan (BFF)
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:5173'
+          # Baseline = passive scan; informational, so don't fail the workflow on alerts.
+          fail_action: false
+          allow_issue_writing: true
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

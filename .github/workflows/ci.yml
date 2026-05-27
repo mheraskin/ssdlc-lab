@@ -1,7 +1,10 @@
 name: CI
 
-# DevSecOps pipeline: static analysis (SAST), dependency auditing, tests and type checks
-# run on every push/PR. A DAST template is included (commented) for dynamic scanning.
+# DevSecOps pipeline (SSDLC: security testing). On every push/PR:
+#   - SAST: PHPStan (PHP) + Semgrep (security rules across PHP & JS)
+#   - Software composition analysis: composer audit + npm audit
+#   - Tests: PHPUnit + svelte-check
+# DAST (dynamic scanning) lives in dast.yml (runnable on demand / on a schedule).
 
 on:
   push:
@@ -15,6 +18,19 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      # Point at the CI Postgres service; the test suite uses the "_test" suffixed DB.
+      DATABASE_URL: "postgresql://app:app@127.0.0.1:5432/ssdlc_bank?serverVersion=16&charset=utf8"
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: ssdlc_bank
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U app" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +44,11 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
+      - name: Prepare environment + JWT keys
+        run: |
+          cp .env.example .env
+          php bin/console lexik:jwt:generate-keypair --no-interaction
+
       - name: SAST — static analysis (PHPStan)
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M
 
@@ -35,7 +56,14 @@ jobs:
         run: composer audit
         continue-on-error: true # report advisories without blocking the lab build
 
-      - name: Unit tests (PHPUnit)
+      - name: Prepare test database
+        run: |
+          php bin/console doctrine:database:create --env=test --if-not-exists -n
+          php bin/console doctrine:migrations:migrate --env=test -n
+
+      - name: Tests (PHPUnit — unit + functional)
+        env:
+          APP_ENV: test
         run: php bin/phpunit
 
   frontend:
@@ -64,15 +92,21 @@ jobs:
         run: npm audit --audit-level=high
         continue-on-error: true
 
-  # DAST — dynamic scanning (template). Uncomment to run OWASP ZAP against the running app.
-  # dast:
-  #   name: DAST (OWASP ZAP baseline)
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Start stack
-  #       run: docker compose up -d --build && sleep 60
-  #     - name: ZAP baseline scan
-  #       uses: zaproxy/action-baseline@v0.12.0
-  #       with:
-  #         target: 'http://localhost:5173'
+  semgrep:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      # Security-focused rulesets covering injection, XSS, secrets, PHP and JS/TS.
+      # Reports findings to the job log + SARIF; non-blocking for the lab build.
+      - name: Semgrep scan
+        run: semgrep scan --config p/security-audit --config p/secrets --config p/php --config p/javascript --sarif --output semgrep.sarif
+        continue-on-error: true
+      - name: Upload SARIF
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+        if: always()
