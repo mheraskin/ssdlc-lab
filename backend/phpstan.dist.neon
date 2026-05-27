@@ -1,0 +1,15 @@
+parameters:
+    level: 5
+    paths:
+        - src/
+        - tests/
+    excludePaths:
+        # Generated bootstrap; not part of application logic.
+        - tests/bootstrap.php
+    ignoreErrors:
+        # Doctrine assigns entity identifiers via reflection, which PHPStan cannot see,
+        # so it wrongly thinks the int side of `?int $id` is unused.
+        -
+            identifier: property.unusedType
+            paths:
+                - src/Entity/*

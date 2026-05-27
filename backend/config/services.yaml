@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    app.risk_mfa_threshold_cents: '%env(int:RISK_MFA_THRESHOLD_CENTS)%'
+    app.risk_max_payments_per_minute: '%env(int:RISK_MAX_PAYMENTS_PER_MINUTE)%'
+    app.mfa_code_ttl_seconds: '%env(int:MFA_CODE_TTL_SECONDS)%'
+    app.mailer_from: '%env(MAILER_FROM)%'
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    # Bind the external payment boundary to the mock adapter. In production this single
+    # line would point at a real gateway adapter implementing the same interface.
+    App\Service\ExternalPaymentGatewayInterface: '@App\Service\ExternalPaymentGatewayMock'
+
+    # Inject the lab/risk configuration into the services that need it.
+    App\Service\MfaService:
+        arguments:
+            $codeTtlSeconds: '%app.mfa_code_ttl_seconds%'
+
+    App\Service\RiskService:
+        arguments:
+            $mfaThresholdCents: '%app.risk_mfa_threshold_cents%'
+            $maxPaymentsPerMinute: '%app.risk_max_payments_per_minute%'
+
+    App\Service\AppMailer:
+        arguments:
+            $from: '%app.mailer_from%'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones

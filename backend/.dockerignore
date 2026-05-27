@@ -1,0 +1,10 @@
+vendor/
+var/
+config/jwt/*.pem
+# .env is git-ignored and never baked into the image; the build derives it from
+# .env.example, and real values come from runtime env vars.
+.env
+.env.local
+.env.*.local
+.phpunit.cache/
+tests/.phpunit.result.cache

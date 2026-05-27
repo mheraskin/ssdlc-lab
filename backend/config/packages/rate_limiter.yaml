@@ -1,0 +1,8 @@
+framework:
+    rate_limiter:
+        # API Gateway behaviour: throttle login attempts to slow credential-stuffing /
+        # brute-force attacks. Keyed by client IP in AuthController.
+        login:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 minute'

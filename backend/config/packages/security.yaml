@@ -1,0 +1,51 @@
+security:
+    # SSDLC control: passwords are never stored in plain text. "auto" selects the strongest
+    # available hasher (argon2id / bcrypt) and transparently rehashes on algorithm upgrades.
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+    # SSDLC control: users are loaded from the protected data layer (PostgreSQL), by email.
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt)/
+            security: false
+
+        # The whole API is stateless and protected by JWT bearer tokens.
+        # The SvelteKit BFF holds the token in an httpOnly cookie and sends it as a
+        # Bearer header; the browser never sees it. Requests without a token simply
+        # fall through to the access_control rules below (which reject protected paths).
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: app_user_provider
+            jwt: ~
+
+    # Only the FIRST matching rule applies — most specific paths first.
+    access_control:
+        - { path: ^/api/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/security/config-check, roles: PUBLIC_ACCESS }
+        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        # Admin Service: separated from client functions, ROLE_ADMIN only.
+        - { path: ^/api/admin, roles: ROLE_ADMIN }
+        # Everything else under /api requires an authenticated user.
+        - { path: ^/api, roles: ROLE_USER }
+
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_EMPLOYEE, ROLE_CLIENT, ROLE_USER]
+        ROLE_EMPLOYEE: [ROLE_CLIENT, ROLE_USER]
+        ROLE_CLIENT: [ROLE_USER]
+
+when@test:
+    security:
+        password_hashers:
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4
+                time_cost: 3
+                memory_cost: 10

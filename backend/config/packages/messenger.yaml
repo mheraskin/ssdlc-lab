@@ -1,0 +1,28 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            # Message Broker / Event Queue. Backed by Doctrine (the DB doubles as the
+            # broker for the lab); production could swap this DSN for Redis/RabbitMQ.
+            # A dedicated `worker` container consumes this transport (see docker-compose.yml),
+            # so the broker really is a separate process from the API.
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+            failed: 'doctrine://default?queue_name=failed'
+            sync: 'sync://'
+
+        routing:
+            # Post-payment fan-out (notification + external gateway + completion audit) is
+            # handled asynchronously by the worker, decoupled from the payment request.
+            App\Message\PaymentCreatedMessage: async
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                # Handle everything in-process during tests.
+                async: 'sync://'
