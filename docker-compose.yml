@@ -1,0 +1,114 @@
+# Local laboratory environment. Mirrors the production topology (frontend -> backend ->
+# database) but runs everything in Docker. In production these map to Cloudflare Pages,
+# DigitalOcean App Platform and DigitalOcean Managed PostgreSQL respectively.
+services:
+  # Protected data layer. Production: DigitalOcean Managed PostgreSQL (private network).
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: ssdlc_bank
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d ssdlc_bank"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Internal application layer (Symfony API). Production: DigitalOcean App Platform.
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: "postgresql://app:app@db:5432/ssdlc_bank?serverVersion=16&charset=utf8"
+      # Local mail goes to Mailpit. Production sets this to postmark+api://<token>@default.
+      MAILER_DSN: "smtp://mailpit:1025"
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    ports:
+      # Host:container. Host port is only for direct API debugging; the BFF reaches the
+      # backend internally on backend:8000. Using 8080 on the host to avoid clashes.
+      - "8080:8000"
+    volumes:
+      - ./backend:/app
+      - backend_var:/app/var
+    healthcheck:
+      test: ["CMD-SHELL", "php -r \"exit(@file_get_contents('http://127.0.0.1:8000/api/health') !== false ? 0 : 1);\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  # Message Broker consumer — a SEPARATE process from the API. It consumes the async
+  # transport (Doctrine-backed queue) and runs the post-payment fan-out: notification
+  # email, external gateway call, and the completion audit event. Production would run
+  # this as its own DigitalOcean worker component (or `messenger:consume` service).
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: "postgresql://app:app@db:5432/ssdlc_bank?serverVersion=16&charset=utf8"
+      MAILER_DSN: "smtp://mailpit:1025"
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+      mailpit:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - worker_var:/app/var
+    # Override the API entrypoint: wait for the DB, ensure the transport table, then consume.
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        [ -f .env ] || cp .env.example .env;
+        until php -r 'exit(@fsockopen("db", 5432) ? 0 : 1);' 2>/dev/null; do echo "worker: waiting for db"; sleep 2; done;
+        php bin/console messenger:setup-transports async --no-interaction || true;
+        exec php bin/console messenger:consume async failed --time-limit=3600 -vv
+
+  # Client layer + BFF (SvelteKit). Production: Cloudflare Pages.
+  # The browser talks only to this service; it proxies /api/* to the backend and holds
+  # the JWT in an httpOnly cookie the browser never sees.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      # Server-side address of the backend, reachable only inside the Docker network.
+      API_INTERNAL_URL: "http://backend:8000"
+      ORIGIN: "http://localhost:5173"
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+  # Local stand-in for the email gateway. Captures all outgoing mail (MFA codes,
+  # notifications) and shows it at http://localhost:8025. Production uses Postmark.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025" # web UI
+      - "1025:1025" # SMTP
+
+volumes:
+  db_data:
+  backend_var:
+  worker_var:
+  frontend_node_modules:
