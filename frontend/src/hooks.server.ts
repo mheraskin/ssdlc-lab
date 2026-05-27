@@ -1,13 +1,25 @@
+import * as Sentry from '@sentry/sveltekit';
+import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle } from '@sveltejs/kit';
+import { env } from '$env/dynamic/public';
 import { backendFetch, SESSION_COOKIE } from '$lib/server/backend';
 import type { User } from '$lib/types';
 
+// Server-side Sentry. No-op until PUBLIC_SENTRY_DSN is set (SSDLC: maintenance/monitoring).
+Sentry.init({
+	dsn: env.PUBLIC_SENTRY_DSN,
+	environment: env.PUBLIC_SENTRY_ENVIRONMENT ?? 'development',
+	tracesSampleRate: 0.2,
+	// Privacy: do not attach request bodies / headers by default (banking app).
+	sendDefaultPii: false
+});
+
 /**
- * Runs on every request. Resolves the current user from the session cookie (by asking
- * the backend) and applies baseline security response headers. The backend call keeps
- * the token server-side; the browser only ever receives the resulting user object.
+ * Resolves the current user from the session cookie (by asking the backend) and applies
+ * baseline security response headers. The backend call keeps the token server-side; the
+ * browser only ever receives the resulting user object.
  */
-export const handle: Handle = async ({ event, resolve }) => {
+const appHandle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
 
 	const token = event.cookies.get(SESSION_COOKIE);
@@ -36,3 +48,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	return response;
 };
+
+// Sentry's request handler runs first (tracing + error capture), then our app logic.
+export const handle = sequence(Sentry.sentryHandle(), appHandle);
+
+// Report uncaught server errors to Sentry (and still log them).
+export const handleError = Sentry.handleErrorWithSentry();

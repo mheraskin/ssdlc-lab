@@ -1,0 +1,30 @@
+# Sentry error monitoring / logging (SSDLC: maintenance — logging & alerting).
+# Fully configured; it stays completely inert until SENTRY_DSN is set (empty = disabled),
+# so the only thing missing to "go live" is the project DSN.
+sentry:
+    dsn: '%env(SENTRY_DSN)%'
+
+    # We capture errors through Monolog (handler below) rather than the bundle's own error
+    # listener, so each error is reported exactly once.
+    register_error_listener: false
+    register_error_handler: false
+
+    options:
+        environment: '%env(APP_ENV)%'
+        # Privacy: never send request headers, cookies, IP or the user to Sentry.
+        # Critical for a banking app — error reports must not leak PII.
+        send_default_pii: false
+        # Performance tracing sample rate (0.0–1.0).
+        traces_sample_rate: 0.2
+        ignore_exceptions:
+            - 'Symfony\Component\ErrorHandler\Error\FatalError'
+            - 'Symfony\Component\Debug\Exception\FatalErrorException'
+
+services:
+    # Monolog handler that forwards ERROR+ log records (including unhandled exceptions,
+    # which Symfony logs) to Sentry. Referenced from monolog.yaml.
+    Sentry\Monolog\Handler:
+        arguments:
+            $hub: '@Sentry\State\HubInterface'
+            $level: !php/const Monolog\Level::Error
+            $fillExtraContext: true

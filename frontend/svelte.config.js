@@ -23,7 +23,9 @@ const config = {
 				'style-src': ['self', 'unsafe-inline'],
 				'img-src': ['self', 'data:'],
 				'font-src': ['self'],
-				'connect-src': ['self', 'ws:', 'wss:'],
+				// 'self' = same-origin BFF/API; ws/wss = Vite HMR in dev;
+				// *.sentry.io / *.ingest.sentry.io = Sentry event ingestion from the browser.
+				'connect-src': ['self', 'ws:', 'wss:', 'https://*.sentry.io', 'https://*.ingest.sentry.io'],
 				'form-action': ['self'],
 				'frame-ancestors': ['none'],
 				'base-uri': ['self'],

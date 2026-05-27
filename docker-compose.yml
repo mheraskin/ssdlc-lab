@@ -29,6 +29,8 @@ services:
       DATABASE_URL: "postgresql://app:app@db:5432/ssdlc_bank?serverVersion=16&charset=utf8"
       # Local mail goes to Mailpit. Production sets this to postmark+api://<token>@default.
       MAILER_DSN: "smtp://mailpit:1025"
+      # Sentry error monitoring. Empty by default; enable with: SENTRY_DSN=... docker compose up
+      SENTRY_DSN: "${SENTRY_DSN:-}"
     depends_on:
       db:
         condition: service_healthy
@@ -60,6 +62,7 @@ services:
       APP_ENV: dev
       DATABASE_URL: "postgresql://app:app@db:5432/ssdlc_bank?serverVersion=16&charset=utf8"
       MAILER_DSN: "smtp://mailpit:1025"
+      SENTRY_DSN: "${SENTRY_DSN:-}"
     depends_on:
       db:
         condition: service_healthy
@@ -91,6 +94,10 @@ services:
       # Server-side address of the backend, reachable only inside the Docker network.
       API_INTERNAL_URL: "http://backend:8000"
       ORIGIN: "http://localhost:5173"
+      # Sentry (browser + SSR). Empty by default; enable with:
+      #   PUBLIC_SENTRY_DSN=... docker compose up
+      PUBLIC_SENTRY_DSN: "${PUBLIC_SENTRY_DSN:-}"
+      PUBLIC_SENTRY_ENVIRONMENT: "development"
     depends_on:
       - backend
     ports:
