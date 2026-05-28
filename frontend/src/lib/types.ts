@@ -70,11 +70,11 @@ export interface RoleMeta {
 export function roleMeta(role: string): RoleMeta {
 	switch (role) {
 		case 'ROLE_ADMIN':
-			return { label: 'Admin', tone: 'admin' };
+			return { label: 'Адміністратор', tone: 'admin' };
 		case 'ROLE_EMPLOYEE':
-			return { label: 'Employee', tone: 'employee' };
+			return { label: 'Співробітник', tone: 'employee' };
 		case 'ROLE_CLIENT':
-			return { label: 'Client', tone: 'client' };
+			return { label: 'Клієнт', tone: 'client' };
 		default:
 			return {
 				label: role.replace(/^ROLE_/, '').toLowerCase().replace(/^\w/, (c) => c.toUpperCase()),

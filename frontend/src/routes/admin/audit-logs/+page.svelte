@@ -6,8 +6,8 @@
 </script>
 
 <p class="lead">
-	Immutable, append-only security &amp; business events — the database blocks any UPDATE or
-	DELETE. These are also emitted as JSON to stderr for SIEM ingestion.
+	Незмінні події безпеки та бізнес-події з режимом лише додавання — база даних блокує будь-який UPDATE або
+	DELETE. Вони також виводяться у форматі JSON у stderr для імпорту в SIEM.
 </p>
 <AuditLogTable logs={data.auditLogs} />
 

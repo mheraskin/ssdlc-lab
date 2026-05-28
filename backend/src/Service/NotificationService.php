@@ -25,7 +25,7 @@ class NotificationService
         User $user,
         string $message,
         string $type = Notification::TYPE_EMAIL,
-        string $subject = 'SSDLC Bank notification',
+        string $subject = 'Сповіщення Банку SSDLC',
     ): Notification {
         $notification = new Notification();
         $notification->setUser($user)

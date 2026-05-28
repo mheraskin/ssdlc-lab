@@ -17,19 +17,19 @@
 	);
 </script>
 
-<h1>Dashboard</h1>
+<h1>Огляд</h1>
 
 <div class="stats">
 	<div class="card stat">
-		<span class="k">Total balance</span>
+		<span class="k">Загальний баланс</span>
 		<span class="v">{totals.join(' · ')}</span>
 	</div>
 	<div class="card stat">
-		<span class="k">Accounts</span>
+		<span class="k">Рахунки</span>
 		<span class="v">{data.accounts.length}</span>
 	</div>
 	<div class="card stat">
-		<span class="k">Recent payments</span>
+		<span class="k">Останні платежі</span>
 		<span class="v">{data.transactions.length}</span>
 	</div>
 </div>
@@ -41,13 +41,13 @@
 </div>
 
 <div class="section-head">
-	<h2>Recent activity</h2>
-	<a href="/transactions">View all →</a>
+	<h2>Остання активність</h2>
+	<a href="/transactions">Переглянути всі →</a>
 </div>
 <TransactionTable transactions={data.transactions} />
 
 <div class="cta">
-	<a class="btn btn-primary" href="/payments/new">+ New payment</a>
+	<a class="btn btn-primary" href="/payments/new">+ Новий платіж</a>
 </div>
 
 <style>

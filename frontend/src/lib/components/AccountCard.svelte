@@ -6,8 +6,8 @@
 
 <div class="acct">
 	<div class="top">
-		<span class="label">{account.currency} account</span>
-		<span class="status" class:frozen={account.status !== 'active'}>{account.status}</span>
+		<span class="label">Рахунок {account.currency}</span>
+		<span class="status" class:frozen={account.status !== 'active'}>{account.status === 'active' ? 'активний' : 'заморожений'}</span>
 	</div>
 	<div class="balance">{account.balance} <span>{account.currency}</span></div>
 	<div class="number">{account.accountNumber}</div>

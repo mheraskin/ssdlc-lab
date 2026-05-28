@@ -4,14 +4,14 @@
 	let { children }: { children: import('svelte').Snippet } = $props();
 
 	const tabs = [
-		{ href: '/admin/users', label: 'Users' },
-		{ href: '/admin/payments', label: 'Payments' },
-		{ href: '/admin/audit-logs', label: 'Audit logs' }
+		{ href: '/admin/users', label: 'Користувачі' },
+		{ href: '/admin/payments', label: 'Платежі' },
+		{ href: '/admin/audit-logs', label: 'Журнали аудиту' }
 	];
 </script>
 
 <div class="admin-head">
-	<h1>Admin panel</h1>
+	<h1>Адмін-панель</h1>
 	<nav>
 		{#each tabs as tab (tab.href)}
 			<a href={tab.href} class:active={page.url.pathname === tab.href}>{tab.label}</a>

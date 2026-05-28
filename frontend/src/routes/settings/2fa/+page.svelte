@@ -28,47 +28,47 @@
 	const enabled = $derived(data.user?.totpEnabled ?? false);
 </script>
 
-<h1>Two-factor authentication</h1>
+<h1>Двофакторна автентифікація</h1>
 <p class="lead">
-	Bind an authenticator app (Google Authenticator, 1Password, Authy, Bitwarden, …) to your
-	account. Once enabled, risky payments will require a 6-digit code from your authenticator —
-	this is the real MFA possession factor on top of your password.
+	Прив'яжіть до облікового запису застосунок-автентифікатор (Google Authenticator, 1Password, Authy, Bitwarden тощо).
+	Після увімкнення ризикові платежі вимагатимуть 6-значний код із вашого автентифікатора —
+	це справжній фактор володіння MFA поверх вашого пароля.
 </p>
 
 {#if enabled && form?.kind !== 'disabled'}
 	<div class="card panel">
-		<div class="state ok">✓ MFA is enabled — payments above the risk threshold ask for a code from your authenticator.</div>
-		<h2>Disable</h2>
-		<p class="hint">Confirm with a current code from your authenticator to turn MFA off.</p>
+		<div class="state ok">✓ MFA увімкнено — платежі понад поріг ризику вимагатимуть код із автентифікатора.</div>
+		<h2>Вимкнення</h2>
+		<p class="hint">Підтвердьте поточним кодом із автентифікатора, щоб вимкнути MFA.</p>
 		{#if form?.kind === 'disable-error'}<div class="alert alert-error">{form.error}</div>{/if}
 		<form method="POST" action="?/disable" use:enhance>
 			<label class="field">
-				Authenticator code
-				<input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" required />
+				Код автентифікатора
+				<input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-значний код" required />
 			</label>
-			<button type="submit" class="btn btn-ghost">Disable MFA</button>
+			<button type="submit" class="btn btn-ghost">Вимкнути MFA</button>
 		</form>
 	</div>
 {:else if form?.kind === 'setup'}
 	<div class="card panel">
-		<div class="state warn">Enrollment in progress — confirm your first code to enable.</div>
-		<h2>Scan with your authenticator app</h2>
+		<div class="state warn">Реєстрація триває — підтвердьте першим кодом, щоб увімкнути.</div>
+		<h2>Скануйте у застосунку-автентифікаторі</h2>
 		<p class="hint">
-			Or paste this secret manually:
+			Або вставте цей секрет вручну:
 			<code class="secret">{form.secret}</code>
 		</p>
 		<div class="qr">
 			{#if qrDataUrl}
-				<img src={qrDataUrl} alt="TOTP QR code" />
+				<img src={qrDataUrl} alt="QR-код TOTP" />
 			{:else}
-				<div class="qr-placeholder">Generating QR…</div>
+				<div class="qr-placeholder">Генерація QR…</div>
 			{/if}
 		</div>
 		{#if dev}
 			<div class="alert alert-info">
-				Dev: no phone needed — run
-				<code>docker compose exec backend php bin/console app:totp YOUR_EMAIL</code>
-				to print the current code, then paste it below.
+				Dev: телефон не потрібен — виконайте
+				<code>docker compose exec backend php bin/console app:totp ВАША_ПОШТА</code>,
+				щоб побачити поточний код, і вставте його нижче.
 			</div>
 		{/if}
 		{#if form.error}<div class="alert alert-error">{form.error}</div>{/if}
@@ -76,18 +76,18 @@
 			<input type="hidden" name="secret" value={form.secret} />
 			<input type="hidden" name="provisioningUri" value={form.provisioningUri} />
 			<label class="field">
-				Code from authenticator
-				<input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" required />
+				Код із автентифікатора
+				<input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-значний код" required />
 			</label>
-			<button type="submit" class="btn btn-primary">Confirm &amp; enable MFA</button>
+			<button type="submit" class="btn btn-primary">Підтвердити та увімкнути MFA</button>
 		</form>
 	</div>
 {:else}
 	<div class="card panel">
-		<div class="state">MFA is not enabled yet — risky payments fall back to an emailed one-time code (step-up only, not real MFA).</div>
+		<div class="state">MFA ще не увімкнено — для ризикових платежів використовується одноразовий код, надісланий на пошту (лише як крок-ап, не справжня MFA).</div>
 		{#if form?.kind === 'error'}<div class="alert alert-error">{form.error}</div>{/if}
 		<form method="POST" action="?/setup" use:enhance>
-			<button type="submit" class="btn btn-primary">Set up authenticator app</button>
+			<button type="submit" class="btn btn-primary">Налаштувати застосунок-автентифікатор</button>
 		</form>
 	</div>
 {/if}
@@ -95,7 +95,6 @@
 <style>
 	.panel {
 		padding: 1.6rem;
-		max-width: 460px;
 	}
 	h2 {
 		margin: 0.4rem 0 0.8rem;

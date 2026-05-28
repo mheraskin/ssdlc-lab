@@ -5,7 +5,7 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<p class="lead">All payments across all users (admin view).</p>
+<p class="lead">Усі платежі всіх користувачів (адміністративний перегляд).</p>
 <TransactionTable transactions={data.payments} showOwner />
 
 <style>

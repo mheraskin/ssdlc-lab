@@ -15,21 +15,33 @@
 		if (risk === 'review') return 'pill-warn';
 		return 'pill-muted';
 	}
+
+	const statusLabels: Record<string, string> = {
+		completed: 'виконано',
+		rejected: 'відхилено',
+		pending_mfa: 'очікує MFA'
+	};
+
+	const riskLabels: Record<string, string> = {
+		blocked: 'заблоковано',
+		review: 'на перевірці',
+		ok: 'ок'
+	};
 </script>
 
 {#if transactions.length === 0}
-	<p class="empty">No transactions yet.</p>
+	<p class="empty">Поки що немає операцій.</p>
 {:else}
 	<table class="table">
 		<thead>
 			<tr>
-				<th>Date</th>
-				{#if showOwner}<th>By</th>{/if}
-				<th>Recipient</th>
-				<th>From</th>
-				<th class="num">Amount</th>
-				<th>Status</th>
-				<th>Risk</th>
+				<th>Дата</th>
+				{#if showOwner}<th>Ким</th>{/if}
+				<th>Отримувач</th>
+				<th>З рахунку</th>
+				<th class="num">Сума</th>
+				<th>Статус</th>
+				<th>Ризик</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -43,8 +55,8 @@
 					</td>
 					<td class="muted">{t.sourceAccountNumber}</td>
 					<td class="num">{t.amount} {t.currency}</td>
-					<td><span class="pill {statusPill(t.status)}">{t.status.replace('_', ' ')}</span></td>
-					<td><span class="pill {riskPill(t.riskStatus)}" title={t.riskReason ?? ''}>{t.riskStatus}</span></td>
+					<td><span class="pill {statusPill(t.status)}">{statusLabels[t.status] ?? t.status.replace('_', ' ')}</span></td>
+					<td><span class="pill {riskPill(t.riskStatus)}" title={t.riskReason ?? ''}>{riskLabels[t.riskStatus] ?? t.riskStatus}</span></td>
 				</tr>
 			{/each}
 		</tbody>

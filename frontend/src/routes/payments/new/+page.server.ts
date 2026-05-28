@@ -40,16 +40,16 @@ export const actions: Actions = {
 				recipientName: body.transaction.recipientName,
 				amount: body.transaction.amount,
 				currency: body.transaction.currency,
-				message: body.message ?? 'A confirmation code has been emailed to you.'
+				message: body.message ?? 'Код підтвердження надіслано на вашу електронну пошту.'
 			};
 		}
 		if (body.status === 'completed' && body.transaction) {
-			return { kind: 'done' as const, message: body.message ?? 'Payment completed.', transaction: body.transaction };
+			return { kind: 'done' as const, message: body.message ?? 'Платіж виконано.', transaction: body.transaction };
 		}
 
 		return fail(res.status || 422, {
 			kind: 'error' as const,
-			error: body.error ?? body.message ?? 'Payment failed.',
+			error: body.error ?? body.message ?? 'Не вдалося виконати платіж.',
 			fields: body.fields ?? null
 		});
 	},
@@ -68,13 +68,13 @@ export const actions: Actions = {
 		const body = (await res.json().catch(() => ({}))) as PaymentApiResponse;
 
 		if (body.status === 'completed' && body.transaction) {
-			return { kind: 'done' as const, message: body.message ?? 'Payment confirmed.', transaction: body.transaction };
+			return { kind: 'done' as const, message: body.message ?? 'Платіж підтверджено.', transaction: body.transaction };
 		}
 
 		return fail(res.status || 422, {
 			kind: 'mfa' as const,
 			transactionId,
-			error: body.message ?? body.error ?? 'Confirmation failed.'
+			error: body.message ?? body.error ?? 'Не вдалося підтвердити.'
 		});
 	}
 };

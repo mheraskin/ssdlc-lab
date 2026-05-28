@@ -14,12 +14,12 @@
 <table class="table">
 	<thead>
 		<tr>
-			<th>Time</th>
-			<th>Event</th>
-			<th>Actor</th>
-			<th>Entity</th>
+			<th>Час</th>
+			<th>Подія</th>
+			<th>Користувач</th>
+			<th>Сутність</th>
 			<th>IP</th>
-			<th>Metadata</th>
+			<th>Метадані</th>
 		</tr>
 	</thead>
 	<tbody>

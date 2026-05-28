@@ -5,8 +5,8 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<h1>Your accounts</h1>
-<p class="lead">You can only ever see accounts you own — enforced by the backend.</p>
+<h1>Ваші рахунки</h1>
+<p class="lead">Ви бачите лише свої власні рахунки — це гарантується серверною частиною.</p>
 
 <div class="cards">
 	{#each data.accounts as account (account.id)}

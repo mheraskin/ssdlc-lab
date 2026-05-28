@@ -21,7 +21,7 @@ export const actions: Actions = {
 		const token = cookies.get(SESSION_COOKIE);
 		const res = await backendFetch(token, '/api/totp/setup', { method: 'POST' });
 		if (!res.ok) {
-			return fail(res.status, { kind: 'error' as const, error: 'Could not start TOTP setup.' });
+			return fail(res.status, { kind: 'error' as const, error: 'Не вдалося розпочати налаштування TOTP.' });
 		}
 		const data = (await res.json()) as TotpSetupResponse;
 		return { kind: 'setup' as const, secret: data.secret, provisioningUri: data.provisioningUri };
@@ -47,7 +47,7 @@ export const actions: Actions = {
 				kind: 'setup' as const,
 				secret,
 				provisioningUri,
-				error: body.error ?? 'Invalid code.'
+				error: body.error ?? 'Невірний код.'
 			});
 		}
 		return { kind: 'enabled' as const };
@@ -68,7 +68,7 @@ export const actions: Actions = {
 		if (!res.ok || body.enabled !== false) {
 			return fail(res.status || 422, {
 				kind: 'disable-error' as const,
-				error: body.error ?? 'Could not disable.'
+				error: body.error ?? 'Не вдалося вимкнути.'
 			});
 		}
 		return { kind: 'disabled' as const };

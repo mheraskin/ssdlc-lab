@@ -5,8 +5,8 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<h1>Transaction history</h1>
-<p class="lead">All payments created from your accounts.</p>
+<h1>Історія операцій</h1>
+<p class="lead">Усі платежі, створені з ваших рахунків.</p>
 
 <TransactionTable transactions={data.transactions} />
 

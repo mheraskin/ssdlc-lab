@@ -21,11 +21,11 @@
 	<thead>
 		<tr>
 			<th>ID</th>
-			<th>Name</th>
-			<th>Email</th>
-			<th>Roles</th>
-			<th>Status</th>
-			<th class="num">Action</th>
+			<th>Ім'я</th>
+			<th>Електронна пошта</th>
+			<th>Ролі</th>
+			<th>Статус</th>
+			<th class="num">Дія</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -36,18 +36,18 @@
 				<td class="muted">{user.email}</td>
 				<td><RoleBadges roles={user.roles} /></td>
 				<td>
-					<span class="pill {user.status === 'active' ? 'pill-ok' : 'pill-bad'}">{user.status}</span>
+					<span class="pill {user.status === 'active' ? 'pill-ok' : 'pill-bad'}">{user.status === 'active' ? 'активний' : 'заблокований'}</span>
 				</td>
 				<td class="num">
 					<button class="btn btn-ghost sm" onclick={() => toggle(user)} disabled={busy === user.id}>
-						{user.status === 'active' ? 'Block' : 'Unblock'}
+						{user.status === 'active' ? 'Заблокувати' : 'Розблокувати'}
 					</button>
 				</td>
 			</tr>
 		{/each}
 	</tbody>
 </table>
-<p class="note">🔒 Passwords and secrets are never exposed to the admin panel.</p>
+<p class="note">🔒 Паролі та секрети ніколи не доступні в адмін-панелі.</p>
 
 <style>
 	.name {

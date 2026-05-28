@@ -10,7 +10,7 @@ export const actions: Actions = {
 		const password = String(form.get('password') ?? '');
 
 		if (!email || !password) {
-			return fail(400, { error: 'Email and password are required.', email });
+			return fail(400, { error: 'Потрібні електронна пошта та пароль.', email });
 		}
 
 		let res: Response;
@@ -20,14 +20,14 @@ export const actions: Actions = {
 				body: JSON.stringify({ email, password })
 			});
 		} catch {
-			return fail(503, { error: 'Backend is unreachable. Is the API running?', email });
+			return fail(503, { error: 'Серверна частина недоступна. Чи запущено API?', email });
 		}
 
 		const data = (await res.json().catch(() => ({}))) as { token?: string; error?: string };
 
 		if (!res.ok || !data.token) {
 			return fail(res.status === 429 ? 429 : 401, {
-				error: data.error ?? 'Login failed.',
+				error: data.error ?? 'Не вдалося увійти.',
 				email
 			});
 		}

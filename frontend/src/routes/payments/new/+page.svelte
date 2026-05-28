@@ -11,58 +11,58 @@
 	const usesTotp = $derived(Boolean(page.data.user?.totpEnabled));
 </script>
 
-<h1>New payment</h1>
+<h1>Новий платіж</h1>
 
 {#if form?.kind === 'done'}
 	<div class="card panel success">
 		<div class="check">✓</div>
 		<h2>{form.message}</h2>
 		<p>
-			Paid <strong>{form.transaction.amount} {form.transaction.currency}</strong> to
+			Сплачено <strong>{form.transaction.amount} {form.transaction.currency}</strong> на користь
 			{form.transaction.recipientName}.
 		</p>
 		<div class="links">
-			<a class="btn btn-primary" href="/transactions">View transactions</a>
-			<a class="btn btn-ghost" href="/payments/new">Make another</a>
+			<a class="btn btn-primary" href="/transactions">Переглянути операції</a>
+			<a class="btn btn-ghost" href="/payments/new">Створити ще один</a>
 		</div>
 	</div>
 {:else if form?.kind === 'mfa'}
 	<div class="card panel">
 		<div class="mfa-icon">🔐</div>
-		<h2>{usesTotp ? 'Real MFA: enter the code from your authenticator' : 'Confirm your payment'}</h2>
+		<h2>{usesTotp ? 'Справжня MFA: введіть код із застосунку-автентифікатора' : 'Підтвердьте свій платіж'}</h2>
 		<p class="lead">{form.message}</p>
 		{#if dev && usesTotp}
 			<div class="alert alert-info">
-				Dev: no phone needed — get the current code with
+				Dev: телефон не потрібен — отримайте поточний код командою
 				<code>docker compose exec backend php bin/console app:totp {page.data.user?.email}</code>
 			</div>
 		{:else if dev}
 			<div class="alert alert-info">
-				Dev: emails are captured by Mailpit — open
-				<a href="http://localhost:8025" target="_blank" rel="noreferrer">localhost:8025</a> to read your code.
-				<br />Enable real MFA in
-				<a href="/settings/2fa">Security settings</a> to require a code from an authenticator instead.
+				Dev: листи перехоплюються Mailpit — відкрийте
+				<a href="http://localhost:8025" target="_blank" rel="noreferrer">localhost:8025</a>, щоб прочитати код.
+				<br />Увімкніть справжню MFA в
+				<a href="/settings/2fa">налаштуваннях безпеки</a>, щоб замість листа вимагати код із автентифікатора.
 			</div>
 		{/if}
 		{#if form.error}<div class="alert alert-error">{form.error}</div>{/if}
 		<form method="POST" action="?/confirm" use:enhance>
 			<input type="hidden" name="transactionId" value={form.transactionId} />
 			<label class="field">
-				Confirmation code
-				<input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" required />
+				Код підтвердження
+				<input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-значний код" required />
 			</label>
-			<button type="submit" class="btn btn-primary">Confirm payment</button>
+			<button type="submit" class="btn btn-primary">Підтвердити платіж</button>
 		</form>
 	</div>
 {:else}
 	<div class="card panel">
 		<p class="lead">
-			The backend validates ownership, balance, limits and risk rules before any money moves.
+			Серверна частина перевіряє право власності, баланс, ліміти та правила ризику до того, як гроші будуть списані.
 		</p>
 		{#if form?.kind === 'error'}<div class="alert alert-error">{form.error}</div>{/if}
 		<form method="POST" action="?/create" use:enhance>
 			<label class="field">
-				From account
+				З рахунку
 				<select name="sourceAccountId" required>
 					{#each data.accounts as account (account.id)}
 						<option value={account.id}>
@@ -72,22 +72,22 @@
 				</select>
 			</label>
 			<label class="field">
-				Recipient name
-				<input name="recipientName" placeholder="e.g. Landlord Properties" required />
+				Ім'я отримувача
+				<input name="recipientName" placeholder="напр., ТОВ «Орендодавець»" required />
 			</label>
 			<label class="field">
-				Recipient account
-				<input name="recipientAccount" placeholder="IBAN / account number" required />
+				Рахунок отримувача
+				<input name="recipientAccount" placeholder="IBAN / номер рахунку" required />
 			</label>
 			<label class="field">
-				Amount
+				Сума
 				<input name="amount" type="number" step="0.01" min="0.01" placeholder="0.00" required />
 			</label>
-			<button type="submit" class="btn btn-primary">Send payment</button>
+			<button type="submit" class="btn btn-primary">Надіслати платіж</button>
 		</form>
 		<p class="tip">
-			💡 Try an amount ≥ 10,000 to trigger the second-factor confirmation step
-			({usesTotp ? 'authenticator code — real MFA' : 'emailed code — step-up only'}).
+			💡 Спробуйте суму ≥ 10 000, щоб запустити крок підтвердження другим фактором
+			({usesTotp ? 'код автентифікатора — справжня MFA' : 'код листом — лише крок-ап'}).
 		</p>
 	</div>
 {/if}
@@ -95,7 +95,6 @@
 <style>
 	.panel {
 		padding: 1.6rem;
-		max-width: 460px;
 	}
 	.success {
 		text-align: center;

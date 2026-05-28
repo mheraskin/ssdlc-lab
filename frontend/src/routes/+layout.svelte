@@ -11,11 +11,11 @@
 	const user = $derived(data.user);
 
 	const navLinks = [
-		{ href: '/dashboard', label: 'Dashboard' },
-		{ href: '/accounts', label: 'Accounts' },
-		{ href: '/transactions', label: 'Transactions' },
-		{ href: '/payments/new', label: 'New payment' },
-		{ href: '/settings/2fa', label: 'Security' }
+		{ href: '/dashboard', label: 'Огляд' },
+		{ href: '/accounts', label: 'Рахунки' },
+		{ href: '/transactions', label: 'Операції' },
+		{ href: '/payments/new', label: 'Новий платіж' },
+		{ href: '/settings/2fa', label: 'Безпека' }
 	];
 
 	const initials = $derived(
@@ -30,20 +30,20 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>SSDLC Bank</title>
+	<title>Банк SSDLC</title>
 </svelte:head>
 
 <div class="app">
 	{#if user}
 		<header>
 			<div class="bar">
-				<div class="brand"><span class="mark">🏦</span> SSDLC <span>Bank</span></div>
+				<div class="brand"><span class="mark">🏦</span> Банк <span>SSDLC</span></div>
 				<nav>
 					{#each navLinks as link (link.href)}
 						<a href={link.href} class:active={page.url.pathname === link.href}>{link.label}</a>
 					{/each}
 					{#if isAdmin(user)}
-						<a href="/admin/audit-logs" class:active={page.url.pathname.startsWith('/admin')}>Admin</a>
+						<a href="/admin/audit-logs" class:active={page.url.pathname.startsWith('/admin')}>Адмін</a>
 					{/if}
 				</nav>
 				<div class="account">
@@ -53,7 +53,7 @@
 					</div>
 					<div class="avatar">{initials}</div>
 					<form method="POST" action="/logout">
-						<button type="submit" class="logout" title="Log out" aria-label="Log out">⎋</button>
+						<button type="submit" class="logout" title="Вийти" aria-label="Вийти">⎋</button>
 					</form>
 				</div>
 			</div>

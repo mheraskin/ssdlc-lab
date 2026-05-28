@@ -5,31 +5,31 @@
 	let { form }: { form: ActionData } = $props();
 
 	const demoUsers = [
-		{ email: 'client@example.com', role: 'Client' },
-		{ email: 'admin@example.com', role: 'Admin' },
-		{ email: 'employee@example.com', role: 'Employee' }
+		{ email: 'client@example.com', role: 'Клієнт' },
+		{ email: 'admin@example.com', role: 'Адміністратор' },
+		{ email: 'employee@example.com', role: 'Співробітник' }
 	];
 </script>
 
 <div class="screen">
 	<div class="hero">
-		<div class="brand"><span>🏦</span> SSDLC Bank</div>
-		<h2>Secure banking, built in.</h2>
+		<div class="brand"><span>🏦</span> Банк SSDLC</div>
+		<h2>Безпечний банкінг за замовчуванням.</h2>
 		<p>
-			A demonstration of a layered, SSDLC-driven banking platform — JWT auth behind a BFF,
-			role-based access, emailed MFA for risky payments, and an immutable audit trail.
+			Демонстрація багатошарової банківської платформи, побудованої за принципами SSDLC — JWT-автентифікація за BFF,
+			рольовий доступ, MFA електронною поштою для ризикових платежів і незмінний журнал аудиту.
 		</p>
 		<ul class="features">
-			<li>🔐 MFA-confirmed payments</li>
-			<li>🛡️ Server-side risk &amp; fraud rules</li>
-			<li>📜 Immutable, SIEM-ready audit log</li>
+			<li>🔐 Платежі з підтвердженням MFA</li>
+			<li>🛡️ Серверні правила ризику та боротьби з шахрайством</li>
+			<li>📜 Незмінний журнал аудиту, готовий до SIEM</li>
 		</ul>
 	</div>
 
 	<div class="panel">
 		<div class="card formcard">
-			<h1>Sign in</h1>
-			<p class="lead">Use a demo account below to explore.</p>
+			<h1>Вхід</h1>
+			<p class="lead">Скористайтеся демо-обліковим записом нижче, щоб ознайомитись.</p>
 
 			{#if form?.error}
 				<div class="alert alert-error">{form.error}</div>
@@ -37,18 +37,18 @@
 
 			<form method="POST" use:enhance>
 				<label class="field">
-					Email
+					Електронна пошта
 					<input name="email" type="email" autocomplete="username" value={form?.email ?? ''} required />
 				</label>
 				<label class="field">
-					Password
+					Пароль
 					<input name="password" type="password" autocomplete="current-password" required />
 				</label>
-				<button type="submit" class="btn btn-primary block">Sign in</button>
+				<button type="submit" class="btn btn-primary block">Увійти</button>
 			</form>
 
 			<div class="demo">
-				<span>Demo accounts — password <code>Password123!</code></span>
+				<span>Демо-облікові записи — пароль <code>Password123!</code></span>
 				<ul>
 					{#each demoUsers as u (u.email)}
 						<li><code>{u.email}</code> · {u.role}</li>
