@@ -56,6 +56,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'totp_enabled', type: Types::BOOLEAN, options: ['default' => false])]
     private bool $totpEnabled = false;
 
+    /**
+     * Highest TOTP step counter ever accepted for this user. Prevents intra-step replay —
+     * a code valid for counter K can be accepted at most once; subsequent verifications
+     * may only succeed for counters strictly greater than this value.
+     */
+    #[ORM\Column(name: 'totp_last_used_counter', type: Types::BIGINT, nullable: true)]
+    private ?int $totpLastUsedCounter = null;
+
     /** @var Collection<int, Account> */
     #[ORM\OneToMany(targetEntity: Account::class, mappedBy: 'user')]
     private Collection $accounts;
@@ -187,6 +195,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->totpEnabled = $enabled;
         $this->updatedAt = new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function getTotpLastUsedCounter(): ?int
+    {
+        return null === $this->totpLastUsedCounter ? null : (int) $this->totpLastUsedCounter;
+    }
+
+    public function setTotpLastUsedCounter(?int $counter): self
+    {
+        $this->totpLastUsedCounter = $counter;
 
         return $this;
     }
