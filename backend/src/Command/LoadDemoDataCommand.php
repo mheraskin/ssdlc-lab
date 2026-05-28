@@ -51,32 +51,32 @@ class LoadDemoDataCommand extends Command
         $blocked = $this->makeUser('victor@example.com', 'Victor Voss', ['ROLE_CLIENT'], User::STATUS_BLOCKED);
 
         // --- Accounts --------------------------------------------------------------
-        $checking = $this->makeAccount($client, 'UA13 0000 1111 2222', 'EUR', 524_318);     // 5,243.18
-        $savings = $this->makeAccount($client, 'UA13 0000 3333 4444', 'EUR', 1_284_900);    // 12,849.00
-        $usd = $this->makeAccount($client, 'UA13 0000 7777 8888', 'USD', 320_000);          // 3,200.00
-        $carlEur = $this->makeAccount($client2, 'UA13 0000 5555 6666', 'EUR', 300_000);     // 3,000.00 (other user)
-        $this->makeAccount($client2, 'UA13 0000 9999 0000', 'GBP', 150_000);                // 1,500.00
-        $this->makeAccount($blocked, 'UA13 0000 1212 3434', 'EUR', 80_000);                 // 800.00
+        $checking = $this->makeAccount($client, 'UA213052990000026007335600119', 'EUR', 1_184_762);   // 11,847.62
+        $savings = $this->makeAccount($client, 'UA853223020000000260012345678', 'EUR', 2_716_039);    // 27,160.39
+        $usd = $this->makeAccount($client, 'UA433052990000026005001122334', 'USD', 320_000);          // 3,200.00
+        $carlEur = $this->makeAccount($client2, 'UA923808050000026004556677889', 'EUR', 300_000);     // 3,000.00 (other user)
+        $this->makeAccount($client2, 'UA673052990000026009987765540', 'GBP', 150_000);                // 1,500.00
+        $this->makeAccount($blocked, 'UA143228170000026001212343454', 'EUR', 80_000);                 // 800.00
 
         // --- Transaction history for Clara -----------------------------------------
         $t = [];
-        $t[] = $this->makeTransaction($checking, $client, 'Landlord Properties', 'UA99 8888 7777', 75_000, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-12 days');
-        $t[] = $this->makeTransaction($savings, $client, 'Coffee Roasters Ltd', 'UA55 4444 3333', 1_850, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-9 days');
-        $t[] = $this->makeTransaction($checking, $client, 'GreenGrocer Market', 'UA22 1111 0000', 6_420, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-6 days');
-        $t[] = $this->makeTransaction($usd, $client, 'Cloud Hosting Inc', 'US12 3456 7890', 4_999, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-4 days');
+        $t[] = $this->makeTransaction($checking, $client, 'Landlord Properties', 'UA763223010000026005884412930', 75_000, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-12 days');
+        $t[] = $this->makeTransaction($savings, $client, 'Coffee Roasters Ltd', 'UA493052990000026008221455630', 1_850, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-9 days');
+        $t[] = $this->makeTransaction($checking, $client, 'GreenGrocer Market', 'UA293808050000026000915442008', 6_420, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-6 days');
+        $t[] = $this->makeTransaction($usd, $client, 'Cloud Hosting Inc', 'GB29NWBK60161331926819', 4_999, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-4 days');
         // A high-value one that was confirmed via MFA.
-        $mfaTx = $this->makeTransaction($savings, $client, 'Auto Dealership', 'UA77 6655 4433', 1_150_000, Transaction::STATUS_COMPLETED, Transaction::RISK_REVIEW, '-3 days');
+        $mfaTx = $this->makeTransaction($savings, $client, 'Auto Dealership', 'UA683223020000000260011223344', 1_150_000, Transaction::STATUS_COMPLETED, Transaction::RISK_REVIEW, '-3 days');
         $mfaTx->setRiskReason('High-value payment (>= 10000.00) requires additional confirmation.');
         $t[] = $mfaTx;
         // One rejected by the risk engine.
-        $rej = $this->makeTransaction($checking, $client, 'Unknown Recipient', 'XX00 0000 0000', 990_000, Transaction::STATUS_REJECTED, Transaction::RISK_BLOCKED, '-2 days');
+        $rej = $this->makeTransaction($checking, $client, 'Unknown Recipient', 'XX00111122223333444455', 990_000, Transaction::STATUS_REJECTED, Transaction::RISK_BLOCKED, '-2 days');
         $rej->setRiskReason('Too many payments in a short period.');
         $t[] = $rej;
-        $t[] = $this->makeTransaction($checking, $client, 'City Utilities', 'UA33 2211 0099', 12_080, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-1 day');
+        $t[] = $this->makeTransaction($checking, $client, 'City Utilities', 'UA563052990000026003322110098', 12_080, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-1 day');
 
         // Carl's history.
-        $this->makeTransaction($carlEur, $client2, 'Bookshop Online', 'UA44 5566 7788', 3_499, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-5 days');
-        $this->makeTransaction($carlEur, $client2, 'Gym Membership', 'UA66 7788 9900', 4_500, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-2 days');
+        $this->makeTransaction($carlEur, $client2, 'Bookshop Online', 'UA213808050000026005566778899', 3_499, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-5 days');
+        $this->makeTransaction($carlEur, $client2, 'Gym Membership', 'UA873223020000000260066778899', 4_500, Transaction::STATUS_COMPLETED, Transaction::RISK_OK, '-2 days');
 
         // --- Notifications ---------------------------------------------------------
         $this->makeNotification($client, 'Payment of 750.00 EUR to Landlord Properties was processed successfully.', '-12 days');
