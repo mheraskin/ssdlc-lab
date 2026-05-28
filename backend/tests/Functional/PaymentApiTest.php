@@ -128,11 +128,15 @@ class PaymentApiTest extends ApiTestCase
 
     private function extractMfaCodeFromEmail(): ?string
     {
-        foreach ($this->getMailerMessages() as $message) {
-            if ($message instanceof Email && str_contains((string) $message->getSubject(), 'confirmation code')) {
-                if (preg_match('/\b(\d{6})\b/', (string) $message->getTextBody(), $m)) {
-                    return $m[1];
-                }
+        // Language-agnostic: walk the most recently sent emails and pull the first
+        // 6-digit number we find in the body. Decoupled from the email subject so the
+        // test does not break if AppMailer's copy is translated/localized.
+        foreach (array_reverse($this->getMailerMessages()) as $message) {
+            if (!$message instanceof Email) {
+                continue;
+            }
+            if (preg_match('/\b(\d{6})\b/', (string) $message->getTextBody(), $m)) {
+                return $m[1];
             }
         }
 
