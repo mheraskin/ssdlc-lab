@@ -41,13 +41,14 @@ jobs:
           extensions: pdo_pgsql, intl, opcache, zip
           tools: composer:v2
 
+      - name: Seed .env (required by post-install cache:clear)
+        run: cp .env.example .env
+
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      - name: Prepare environment + JWT keys
-        run: |
-          cp .env.example .env
-          php bin/console lexik:jwt:generate-keypair --no-interaction
+      - name: Generate JWT keys
+        run: php bin/console lexik:jwt:generate-keypair --no-interaction
 
       - name: SAST — static analysis (PHPStan)
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M
