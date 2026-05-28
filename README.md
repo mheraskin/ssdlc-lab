@@ -1,131 +1,170 @@
-# SSDLC Banking Demo
+# Банк SSDLC — демо-застосунок
 
-A minimal but complete **client-server banking application** that implements the full
-five-layer architecture from Practical Work No. 5 following **SSDLC** (Secure Software
-Development Life Cycle) principles. Every component from the architecture is either
-implemented in code or satisfied by the production deploy target (Cloudflare /
-DigitalOcean) — and anything mocked is clearly labelled.
+Клієнт-серверний банківський веб-застосунок, побудований за принципами **SSDLC**
+(Secure Software Development Life Cycle). Реалізує п'ятирівневу архітектуру з
+автентифікацією через JWT, рольовим доступом, MFA для ризикових платежів,
+незмінним журналом аудиту та повним конвеєром безпекових перевірок у CI.
 
-## Stack
+Кожен компонент архітектури або реалізований у коді, або покритий конфігурацією
+production-розгортання (Cloudflare / DigitalOcean) — усе, що змочковане, явно
+позначено як таке.
 
-| Layer | Technology |
+## Стек
+
+| Рівень | Технологія |
 |---|---|
-| Frontend + BFF | **SvelteKit** (Svelte 5) — runs a server layer acting as a Backend-For-Frontend |
-| Backend API | **Symfony 7** (PHP 8.4) — modular monolith REST API |
-| Message broker | **Symfony Messenger** (Doctrine transport) consumed by a **separate worker** process |
-| Email | **Postmark** (prod) / **Mailpit** (local) via Symfony Mailer — real emailed MFA + notifications |
-| Monitoring | **Sentry** (errors + tracing, backend & frontend) + Monolog/stderr SIEM-ready logs |
-| Database | **PostgreSQL 16** |
-| Local orchestration | **Docker Compose** (db, backend, worker, frontend, mailpit) |
-| Production frontend | **Cloudflare Pages** (+ Cloudflare DNS / WAF / TLS / Anti-DDoS) |
+| Frontend + BFF | **SvelteKit** (Svelte 5) — серверний шар як Backend-for-Frontend |
+| Backend API | **Symfony 7** (PHP 8.4) — модульний моноліт |
+| Брокер повідомлень | **Symfony Messenger** (Doctrine transport) + окремий worker-процес |
+| Email | **Postmark** (prod) / **Mailpit** (локально) через Symfony Mailer |
+| Моніторинг | **Sentry** (помилки + traces, backend і frontend) + Monolog/stderr (SIEM-ready) |
+| База даних | **PostgreSQL 16** |
+| Локальна оркестрація | **Docker Compose** (db, backend, worker, frontend, mailpit) |
+| Production frontend | **Cloudflare Pages** (+ DNS / WAF / TLS / Anti-DDoS) |
 | Production backend | **DigitalOcean App Platform** (api + worker) + **Managed PostgreSQL** |
 
-## The BFF security model
+## Безпекова модель BFF
 
 ```
-Browser ──(same-origin, httpOnly cookie)──► SvelteKit server (BFF) ──(Bearer JWT)──► Symfony API ──► PostgreSQL
+Браузер ──(same-origin, httpOnly cookie)──► SvelteKit-сервер (BFF) ──(Bearer JWT)──► Symfony API ──► PostgreSQL
 ```
 
-The JWT is stored in an **httpOnly, SameSite=Lax** cookie that the BFF holds. The browser
-never sees the token (XSS cannot steal it), CORS is never exposed to the browser, and the
-SvelteKit server is the only thing that talks to the API — it plays the role of the
-**API Gateway** layer. The backend is reachable only on the internal network.
+JWT зберігається в **httpOnly, SameSite=Lax** cookie на стороні BFF. Браузер
+**ніколи не бачить токен** — XSS не може його викрасти. CORS не експонується
+браузеру, бо BFF — це єдина точка, що звертається до API; backend доступний
+лише з внутрішньої мережі і виконує роль **API Gateway**.
 
-## Quick start
+## Швидкий старт
 
 ```bash
-make up        # build + start db, backend, frontend (first run installs deps)
-# then open:
+make up        # збирає та піднімає db, backend, worker, frontend, mailpit
 open http://localhost:5173
 ```
 
-(or `docker compose up -d --build` if you don't have `make`).
+> `backend/.env` ігнорується git. `make up` створює його з `backend/.env.example`
+> на першому запуску. Для запуску поза Docker: `cp backend/.env.example backend/.env`.
 
-> `backend/.env` is git-ignored. `make up` creates it automatically from
-> `backend/.env.example` on first run; for non-Docker use, `cp backend/.env.example backend/.env`.
-
-- **App (use this):** http://localhost:5173
-- **Mailpit (captured emails — MFA codes & receipts):** http://localhost:8025
-- **API (direct debugging only):** http://localhost:8080/api/health
+- **Застосунок:** http://localhost:5173
+- **Mailpit (перехоплені email-листи — MFA-коди, нотифікації):** http://localhost:8025
+- **API (тільки для дебагу):** http://localhost:8080/api/health
 - **PostgreSQL:** localhost:5432 (`app` / `app` / `ssdlc_bank`)
 
-### Demo accounts (password `Password123!`)
+### Демо-акаунти (пароль `Password123!`)
 
-| Email | Role | Notes |
+| Email | Роль | Опис |
 |---|---|---|
-| `client@example.com` | Client | 3 accounts (EUR/EUR/USD) + transaction history |
-| `client2@example.com` | Client | a second client (proves isolation) |
-| `employee@example.com` | Employee | client-level access |
-| `admin@example.com` | Admin | users, all payments, audit logs |
-| `victor@example.com` | Client | **blocked** account (login is refused) |
+| `client@example.com` | Клієнт | 3 рахунки (EUR/EUR/USD) + історія операцій |
+| `client2@example.com` | Клієнт | другий клієнт (демонструє ізоляцію даних) |
+| `employee@example.com` | Співробітник | read-only доступ до чужих рахунків |
+| `admin@example.com` | Адміністратор | користувачі, всі платежі, журнал аудиту |
+| `victor@example.com` | Клієнт | **заблокований** (вхід відхиляється) |
 
-### What to try
+### Що варто спробувати
 
-1. **Log in** as the client → dashboard with three accounts + history.
-2. **New payment** of a small amount → completes immediately; the receipt email is sent
-   **asynchronously by the worker** (view it at http://localhost:8025).
-3. **Enable real MFA** (recommended) → **Security** in the nav → "Set up authenticator app".
-   The page shows a QR + secret. Scan it with Google Authenticator / 1Password / Authy /
-   Bitwarden — *or skip the phone in dev* with
-   `docker compose exec backend php bin/console app:totp client@example.com` and paste
-   the code shown. Once enrolled, risky payments demand a code from the authenticator —
-   this is the **real MFA possession factor** (password + authenticator device).
-4. **New payment ≥ 10,000** →
-   - If MFA is enrolled: enter a code from your authenticator (true MFA).
-   - Otherwise: a one-time code is **emailed** (Mailpit at http://localhost:8025) — that
-     is *step-up confirmation*, not true MFA.
-5. Try a payment that's too large → rejected (insufficient balance) server-side.
-6. Log in as **admin** → review **users** (block/unblock), **payments**, and the
-   **immutable audit log** (rows tag `factor: 'totp' | 'email_otp'`).
+1. **Увійдіть** клієнтом → побачите три рахунки + історію.
+2. **Створіть невеликий платіж** → виконується миттєво; квитанція надсилається
+   **асинхронно через worker** і потрапляє в Mailpit.
+3. **Увімкніть справжню MFA** → «Безпека» в меню → «Налаштувати застосунок-автентифікатор».
+   Скануйте QR Google Authenticator / 1Password / Authy / Bitwarden, *або* в dev-режимі
+   отримайте код командою:
+   ```bash
+   docker compose exec backend php bin/console app:totp client@example.com
+   ```
+   Після увімкнення ризикові платежі вимагатимуть код із автентифікатора — це
+   **справжній фактор володіння MFA** (пароль + пристрій).
+4. **Платіж ≥ 10 000** →
+   - Якщо MFA увімкнено: код із автентифікатора (справжня MFA).
+   - Інакше: одноразовий код листом (Mailpit) — це *step-up*, не справжня MFA.
+5. Платіж понад баланс → відхилено на сервері.
+6. Увійдіть **адміністратором** → блокування/розблокування користувачів,
+   всі платежі, **незмінний журнал аудиту** (з тегом `factor: 'totp' | 'email_otp'`).
 
-## Architecture coverage
+## SSDLC — мапа фаз
 
-Every component of the architecture is accounted for. See
-**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full component-by-component map.
-Highlights:
-
-- **Auth Service** — JWT (lexik), password hashing, **real MFA via TOTP** (RFC 6238 — Google
-  Authenticator / 1Password / Authy …) when the user enrolls; falls back to **emailed OTP
-  step-up** (Postmark / Mailpit) otherwise. The same `/payments/{id}/confirm` endpoint
-  dispatches by factor; audit metadata records which.
-- **RBAC** — `ROLE_CLIENT` / `ROLE_EMPLOYEE` / `ROLE_ADMIN`, role hierarchy + an account
-  ownership voter.
-- **Payment Service** — server-side ownership, balance, limit and risk checks.
-- **Fraud/Risk** — high-value → MFA, velocity (too many payments/minute) → blocked.
-- **Message Broker** — Symfony Messenger (Doctrine transport) consumed by a **dedicated
-  `worker` container**; after a payment it fans out to notification email + external
-  gateway + completion audit, decoupled from the request.
-- **Audit Log** — append-only `audit_logs` table, made **immutable by a PostgreSQL
-  trigger** that blocks UPDATE/DELETE; also emitted as JSON for SIEM ingestion.
-- **API Gateway** — BFF routing + Symfony login rate-limiter (+ optional Cloudflare Worker).
-- **WAF-lite** — security headers on both tiers (Cloudflare strengthens these in prod).
-
-## Security controls (SSDLC)
-
-| Control | Where |
+| Фаза | Чим представлена |
 |---|---|
-| Password hashing | `security.yaml` (`auto` = argon2id/bcrypt) |
-| Authentication (tokens) | lexik JWT, stateless `^/api` firewall |
-| Authorization (RBAC) | role hierarchy, `access_control`, `AccountVoter` |
-| MFA (real) | `TotpService` — RFC 6238 authenticator-app code (possession factor, AAL2). `MfaService` falls back to emailed OTP step-up for users not yet enrolled. Audit tags `factor: 'totp' \| 'email_otp'`. |
-| Input validation | Symfony Validator on request DTOs |
-| Login rate limiting | `rate_limiter.yaml` + `AuthController` |
-| Audit logging | `audit_logs` + `AuditLogger` |
-| Audit immutability | DB trigger (`prevent_audit_log_mutation`) |
-| Token never in browser | BFF httpOnly cookie |
-| Content-Security-Policy | strict nonce-based CSP (`kit.csp`): `script-src 'self' 'nonce-…'`, no `unsafe-inline` for scripts |
-| Secrets out of code | `backend/.env` is **git-ignored** — only `backend/.env.example` is committed; JWT keys git-ignored; prod uses encrypted env vars |
-| Payment integrity | all checks server-side in `PaymentService` |
-| Error hygiene | `ApiExceptionSubscriber` hides internals in prod |
-| Error monitoring | **Sentry** on backend (`sentry.yaml`, no PII) and frontend (`hooks.*.ts`), wired through Monolog — inert until a DSN is set |
-| DB isolation | backend-only access; no public DB |
-| DevSecOps | GitHub Actions: SAST (PHPStan + **Semgrep**), `composer`/`npm audit`, tests; **DAST** via OWASP ZAP (`dast.yml`) |
+| **Security Requirements** | Зафіксовано в попередніх лабораторних: вимоги до автентифікації, авторизації, паролів, сесій, валідації введення, логування, MFA для критичних операцій, backup. |
+| **Security Design** | Багаторівнева архітектура з DMZ, прикладним рівнем, рівнем даних і аудитом. Реалізована як `backend` + `frontend` із BFF-шаром. |
+| **Security Development** | Symfony Security Bundle (argon2id/bcrypt, JWT, rate limiter), `AccountVoter`, `PaymentService`, `RiskService`, `MfaService`, незмінний `audit_logs`, `SecurityHeadersSubscriber`, `ApiExceptionSubscriber`. |
+| **Security Testing** | SAST: PHPStan + Semgrep; SCA: `composer audit` + `npm audit`; DAST: OWASP ZAP baseline; **63 unit/functional тести (172 assertions)** на PHPUnit із CI-прогоном на реальній PostgreSQL. |
+| **Security Deployment** | Docker Compose локально; FrankenPHP-образ для backend; `.do/app.yaml` для DigitalOcean App Platform; `cloudflare/_headers` + `worker-gateway.js`. |
+| **Security Maintenance** | Sentry (підключений, готовий до використання), Monolog із security-каналом, append-only audit log, `make db-backup` через `pg_dump`. |
 
-Check the live posture at `GET /api/security/config-check`.
+## Архітектура — реалізація п'яти рівнів
 
-## Production deployment
+- **Клієнтський рівень** — SvelteKit-додаток із серверним рендерингом. JWT-токен
+  ніколи не виходить у браузер: після успішного входу SvelteKit-action кладе
+  токен у httpOnly cookie `session`. Будь-який запит до backend йде через
+  серверний `backendFetch`, який додає `Authorization` тільки на server-side.
+- **Публічна зона / DMZ** — мапиться на **Cloudflare**. У `cloudflare/_headers`
+  задано HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy на
+  рівні edge; `cloudflare/worker-gateway.js` — edge-проксі з rate-limit і CORS.
+- **API Gateway + прикладний рівень** — Symfony як модульний моноліт. Декаплінг
+  повільних операцій реалізовано через **Symfony Messenger**: worker-процес у
+  docker-compose винесений в окремий контейнер з `messenger:consume` як entrypoint.
+- **Захищений рівень даних** — PostgreSQL 16. Доступ лише з backend-у; жодного
+  публічного інтерфейсу. Сирий SQL використано рівно один раз — у healthcheck
+  (`SELECT 1`). Інше — Doctrine ORM із параметризованими запитами.
+- **Рівень аудиту і моніторингу** — розділено на два незалежні канали: бізнес-події
+  пишуться в `audit_logs` (захищена тригером від UPDATE/DELETE), технічні
+  помилки — в Sentry. Журнали Monolog у JSON у stderr — готові до SIEM.
 
-The local stack maps directly to production (configuration is provided, not deployed):
+Повна мапа компонентів — у [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Безпекові механізми
+
+| Контроль | Де реалізовано |
+|---|---|
+| Хешування паролів | `security.yaml` — `auto` (argon2id з fallback на bcrypt) |
+| Автентифікація | Lexik JWT, stateless firewall `^/api` |
+| Авторизація (RBAC) | role hierarchy + `access_control` + `AccountVoter` |
+| MFA (справжня) | `TotpService` — RFC 6238, AAL2; TOTP-секрет зашифрований at rest через libsodium `crypto_secretbox` (XSalsa20-Poly1305); per-user step counter для захисту від replay у 30с-вікні |
+| MFA (step-up) | `MfaService` — bcrypt-хеш одноразового коду в `MfaChallenge`, надсилається листом, обмежений TTL |
+| Валідація введення | Symfony Validator на DTO; формат IBAN, додатна сума, обмеження довжини |
+| Rate limiting | `rate_limiter.yaml`: sliding window 5 спроб/хв на IP для `/api/login` |
+| User enumeration | Узагальнене повідомлення `Invalid credentials.` незалежно від того, чи існує користувач |
+| Журнал аудиту | `audit_logs` + `AuditLogger`, фіксований перелік типів подій |
+| Незмінність журналу | PostgreSQL-тригер `prevent_audit_log_mutation` — блокує UPDATE/DELETE на рівні БД |
+| Захист від IDOR | `AccountVoter` + `denyAccessUnlessGranted(AccountVoter::USE)` + повторна перевірка в `PaymentService` |
+| Цілісність платежів | усі перевірки (власник, статус, баланс, ризик) — server-side в `PaymentService`; гроші — в `integer cents`, не float |
+| Токен поза браузером | httpOnly cookie на стороні BFF |
+| CSP | nonce-based (`kit.csp`): `script-src 'self' 'nonce-…'`; без `unsafe-inline` |
+| Security headers | `SecurityHeadersSubscriber` на kernel.response (X-Content-Type-Options, X-Frame-Options, HSTS, CSP) |
+| Error hygiene | `ApiExceptionSubscriber` приховує внутрішні деталі у production |
+| Секрети поза кодом | `backend/.env` у `.gitignore`; лише `.env.example` із плейсхолдерами; production — секрети DigitalOcean App Platform (KMS-шар) |
+| Ізоляція БД | backend-only доступ; жодного публічного інтерфейсу |
+| Моніторинг помилок | Sentry на backend (`sentry.yaml`, `send_default_pii: false`) і frontend (`hooks.*.ts`) |
+| DevSecOps | GitHub Actions: SAST (PHPStan + Semgrep), `composer`/`npm audit`, тести; DAST (OWASP ZAP) у `dast.yml` |
+
+Перевірити живий стан конфігурації: `GET /api/security/config-check`.
+
+## Структура репозиторію
+
+```
+ssdlc-lab/
+├── docker-compose.yml      # db, backend, worker, frontend, mailpit
+├── Makefile                # up / reset / test / lint / db-backup
+├── .do/app.yaml            # DigitalOcean App Platform spec
+├── .github/workflows/
+│   ├── ci.yml              # PHPStan + Semgrep + audits + tests
+│   └── dast.yml            # OWASP ZAP baseline
+├── cloudflare/             # _headers, worker-gateway.js
+├── docs/                   # ARCHITECTURE.md та інші документи
+├── backend/                # Symfony 7 API
+│   ├── config/packages/    # security, messenger, monolog, ...
+│   ├── migrations/         # схема + тригер audit_logs
+│   └── src/                # Controller, Entity, Service, ...
+└── frontend/               # SvelteKit BFF + UI
+    └── src/                # routes, lib/server, hooks.*
+```
+
+Поза git залишаються `vendor`, `node_modules`, `var`, `.svelte-kit`,
+реальні `.env`-файли та приватні JWT-ключі.
+
+## Production-розгортання
+
+Локальний стек безпосередньо мапиться на production (конфігурація готова,
+живий деплой не активовано):
 
 ```
 https://bank-demo.example.com      → Cloudflare Pages (SvelteKit)
@@ -133,78 +172,120 @@ https://api.bank-demo.example.com  → Cloudflare DNS/WAF/TLS → DigitalOcean A
                                      → DigitalOcean Managed PostgreSQL
 ```
 
-- Frontend → Cloudflare Pages: see **[cloudflare/README.md](cloudflare/README.md)**
-  (swap to `adapter-cloudflare`; `_headers` + optional `worker-gateway.js`).
-- Backend → DigitalOcean: **[backend/Dockerfile](backend/Dockerfile)** (FrankenPHP) +
-  **[.do/app.yaml](.do/app.yaml)** — App Platform `api` **and** `worker` components +
-  Managed PostgreSQL (automated backups). Set `MAILER_DSN` to your Postmark token.
+- Frontend → Cloudflare Pages: [cloudflare/README.md](cloudflare/README.md)
+  (`adapter-cloudflare`, `_headers`, опційний `worker-gateway.js`).
+- Backend → DigitalOcean: [backend/Dockerfile](backend/Dockerfile) (FrankenPHP) +
+  [.do/app.yaml](.do/app.yaml) — компоненти `api` та `worker` + Managed PostgreSQL
+  з автоматичними бекапами. Встановіть `MAILER_DSN` на токен Postmark.
 
-## What is real vs mocked (and how it maps to production)
+## Що реально, а що змочковане
 
-| Capability | Locally | Production |
+| Можливість | Локально | Production |
 |---|---|---|
-| **MFA** | **real TOTP** (Google Authenticator / `app:totp` CLI) when enrolled; emailed OTP step-up via Mailpit otherwise | **real TOTP** + emailed OTP via Postmark |
-| **Email notifications** | **really sent** to Mailpit | Postmark |
-| **Message broker / worker** | **real** Doctrine queue + worker container | DO worker component (or Redis/RabbitMQ) |
-| External payment gateway | mock adapter | real card network / partner bank API |
-| SMS / Push notifications | mock (DB record) | real SMS/Push provider |
-| WAF / DNS / Anti-DDoS / LB / TLS | n/a | Cloudflare + DigitalOcean |
-| SIEM | audit logs + JSON stderr logs | ingested by a SIEM |
+| **MFA** | **справжній TOTP** (Google Authenticator / `app:totp` CLI) при увімкненні; інакше — email-OTP через Mailpit | справжній TOTP + email-OTP через Postmark |
+| **Email-нотифікації** | реально надсилаються в Mailpit | Postmark |
+| **Брокер + worker** | реальна Doctrine-черга + worker-контейнер | DO worker (або Redis/RabbitMQ) |
+| Зовнішній платіжний шлюз | mock-адаптер | реальний card network / партнерський банк |
+| SMS / Push | mock (запис у БД) | SMS/Push provider |
+| WAF / DNS / Anti-DDoS / LB / TLS | відсутні | Cloudflare + DigitalOcean |
+| SIEM | audit log + JSON stderr | поглинається SIEM-ом |
 | KMS / Vault | `.env.local` / env vars | DO / Cloudflare encrypted env vars |
-| DB cluster | one PostgreSQL container | DigitalOcean Managed PostgreSQL |
+| Кластер БД | один PostgreSQL-контейнер | DigitalOcean Managed PostgreSQL |
 
-## Project layout
+## Результати безпекового аудиту
+
+Аудит виконано в класичному форматі: збір інформації → планування → виявлення
+вразливостей → тестування на проникнення → звітування.
+
+### SAST + SCA
+
+| Інструмент | Результат |
+|---|---|
+| PHPStan (level 5) | 0 помилок |
+| Semgrep (155 правил, 80 файлів) | 0 знахідок |
+| svelte-check | 0 errors, 0 warnings |
+| `composer audit` | без security-радників |
+| `npm audit` | 4 low (транзитивна `cookie <0.7.0` через `@sveltejs/kit`) |
+| PHPUnit (unit + functional) | **63 tests, 172 assertions — PASS** |
+
+### DAST — OWASP ZAP baseline
 
 ```
-backend/    Symfony API (Controller / Entity / Repository / Service / Security / Message)
-frontend/   SvelteKit BFF + SPA (routes, lib/server BFF helpers, components)
-docs/       ARCHITECTURE.md — full coverage map
-cloudflare/ _headers, optional API-gateway Worker, deploy notes
-.do/        DigitalOcean App Platform spec
-.github/    CI workflow (SAST / audit / tests / DAST template)
-docker-compose.yml, Makefile
+FAIL-NEW: 0
+WARN-NEW: 8
+PASS:     59
 ```
 
-## Commands
+Жодного FAIL. Вісім WARN — низького/інформаційного рівня: wildcard у CSP для
+Sentry ingest (свідомий), відсутність окремого anti-CSRF-токена (свідоме
+рішення — `SameSite=Lax` cookie + origin-check + stateless API), відсутність
+деяких заголовків на `/robots.txt` у dev-режимі (у production покрито через
+`cloudflare/_headers`), і кілька інформаційних знахідок.
+
+### Ручні перевірки
+
+1. Підстановка чужого `account_id` в URL → **403** (`AccountVoter` спрацював).
+2. Шість підряд невдалих логінів з однієї IP → **429** (rate limiter).
+3. `DELETE` / `UPDATE` по `audit_logs` з psql → **exception** на рівні тригера БД.
+4. Платіж понад поріг без MFA → **status: review** + код у Mailpit (`RiskService`).
+
+## Команди
 
 ```bash
-make up        # start everything
-make down      # stop
-make logs      # tail logs
-make reset     # clean DB + re-seed demo data
+make up        # запуск усіх сервісів
+make down      # зупинка
+make logs      # tail логів
+make reset     # очищення БД + перезавантаження демо-даних
 make test      # PHPUnit + svelte-check
 make lint      # PHPStan + svelte-check
-make db-backup # pg_dump to ./backups (stands in for managed backups)
-make help      # list all targets
+make db-backup # pg_dump у ./backups (стенд-ін для managed backups)
+make help      # список усіх targets
 ```
 
-## SSDLC: security testing & maintenance
+### Перевірка безпеки вручну
 
-**Security testing**
-- **SAST** — PHPStan (PHP) + **Semgrep** (`p/security-audit`, `p/secrets`, `p/php`,
-  `p/javascript`) across backend and frontend, in `ci.yml` on every push/PR.
-- **SCA (dependencies)** — `composer audit` + `npm audit` in CI.
-- **DAST** — OWASP **ZAP baseline** against the running BFF in `.github/workflows/dast.yml`
-  (run from the Actions tab or weekly): brings the stack up, scans `http://localhost:5173`.
-- **Tests** — **49 PHPUnit tests** (unit + functional) plus `svelte-check`; run with `make test`.
-  - *Unit*: risk rules, MFA (code hashing / expiry / attempt-lockout), input-validation
-    constraints, the account-ownership voter, and no-secret-leakage in API serialization.
-  - *Functional* (boot the kernel against an isolated test DB, transaction-rolled-back per
-    test via `dama/doctrine-test-bundle`): login / blocked users / **rate-limiting**,
-    account & transaction **isolation (IDOR)**, payments (debit, **cross-account 403**,
-    over-balance, validation, and the **full emailed-MFA flow** read from the captured
-    message), **admin RBAC**, security headers, JSON error handling, and **audit-log
-    immutability** at the DB level.
+```bash
+# Unit + functional тести backend
+docker compose exec -T backend php bin/phpunit
 
-**Maintenance**
-- **Logging & alerting** — **Sentry** captures errors + traces on both tiers (wired through
-  Monolog on the backend). It is fully configured and **only needs a DSN**:
-  ```bash
-  SENTRY_DSN=<backend-dsn> PUBLIC_SENTRY_DSN=<frontend-dsn> docker compose up -d
-  ```
-  Verify the backend wiring any time with `docker compose exec backend php bin/console sentry:test`.
-  No PII is sent (`send_default_pii: false`). Alongside Sentry, security events are emitted
-  as JSON to stderr (SIEM-ready) and stored in the immutable `audit_logs` table.
-- **Auditing** — append-only `audit_logs`, enforced immutable by a PostgreSQL trigger.
-- **Backups** — `make db-backup` (`pg_dump`) locally; DigitalOcean Managed PostgreSQL
-  provides automated daily backups + point-in-time recovery in production.
+# Типобезпека frontend
+docker compose exec -T frontend npm run check
+
+# PHPStan
+docker compose exec -T backend vendor/bin/phpstan analyse --no-progress --memory-limit=512M
+
+# Semgrep (SAST)
+docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep \
+  semgrep scan --config p/security-audit --config p/secrets \
+    --config p/php --config p/javascript backend/src frontend/src
+
+# SCA: аудит залежностей
+docker compose exec -T backend composer audit
+docker compose exec -T frontend npm audit
+
+# DAST: OWASP ZAP baseline
+docker run --rm --network ssdlc-lab_default ghcr.io/zaproxy/zaproxy:stable \
+  zap-baseline.py -t http://frontend:5173 -I
+
+# Sentry: перевірка інтеграції
+docker compose exec -T backend php bin/console sentry:test
+
+# TOTP: згенерувати поточний код для dev-тестування MFA
+docker compose exec backend php bin/console app:totp client@example.com
+
+# Бекап БД
+make db-backup
+```
+
+## Sentry — увімкнення
+
+Інтеграція повністю налаштована; потрібен лише DSN:
+
+```bash
+SENTRY_DSN=<backend-dsn> PUBLIC_SENTRY_DSN=<frontend-dsn> docker compose up -d
+docker compose exec backend php bin/console sentry:test
+```
+
+`send_default_pii: false` — Sentry не отримує імена/email-и користувачів
+автоматично. Поруч із Sentry події безпеки емітуються як JSON у stderr
+(SIEM-ready) і зберігаються в незмінній таблиці `audit_logs`.
