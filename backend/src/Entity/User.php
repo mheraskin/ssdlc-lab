@@ -46,6 +46,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'updated_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /**
+     * Base32 TOTP seed (RFC 6238). NULL until the user starts enrollment. When set but
+     * {@see $totpEnabled} is false, the user has begun enrollment but not yet confirmed.
+     */
+    #[ORM\Column(name: 'totp_secret', length: 255, nullable: true)]
+    private ?string $totpSecret = null;
+
+    #[ORM\Column(name: 'totp_enabled', type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $totpEnabled = false;
+
     /** @var Collection<int, Account> */
     #[ORM\OneToMany(targetEntity: Account::class, mappedBy: 'user')]
     private Collection $accounts;
@@ -153,6 +163,32 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getAccounts(): Collection
     {
         return $this->accounts;
+    }
+
+    public function getTotpSecret(): ?string
+    {
+        return $this->totpSecret;
+    }
+
+    public function setTotpSecret(?string $totpSecret): self
+    {
+        $this->totpSecret = $totpSecret;
+        $this->updatedAt = new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function isTotpEnabled(): bool
+    {
+        return $this->totpEnabled;
+    }
+
+    public function setTotpEnabled(bool $enabled): self
+    {
+        $this->totpEnabled = $enabled;
+        $this->updatedAt = new \DateTimeImmutable();
+
+        return $this;
     }
 
     /** No sensitive temporary data is stored on the user, so nothing to erase. */

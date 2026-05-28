@@ -22,6 +22,11 @@ class MfaChallenge
     public const STATUS_FAILED = 'failed';
     public const STATUS_EXPIRED = 'expired';
 
+    /** Email one-time code — out-of-band step-up confirmation (NOT true MFA on its own). */
+    public const FACTOR_EMAIL_OTP = 'email_otp';
+    /** TOTP from an authenticator app (RFC 6238) — possession factor, real MFA with password. */
+    public const FACTOR_TOTP = 'totp';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -37,8 +42,13 @@ class MfaChallenge
     #[ORM\Column(name: 'related_transaction_id', nullable: true)]
     private ?int $relatedTransactionId = null;
 
-    #[ORM\Column(name: 'code_hash')]
-    private string $codeHash;
+    /** Stored only for email-OTP challenges. NULL for TOTP, where the code is derived from secret+time. */
+    #[ORM\Column(name: 'code_hash', nullable: true)]
+    private ?string $codeHash = null;
+
+    /** Which factor this challenge expects at confirm time (email_otp / totp). */
+    #[ORM\Column(length: 20, options: ['default' => self::FACTOR_EMAIL_OTP])]
+    private string $factor = self::FACTOR_EMAIL_OTP;
 
     #[ORM\Column(length: 20)]
     private string $status = self::STATUS_PENDING;
@@ -102,14 +112,26 @@ class MfaChallenge
         return $this;
     }
 
-    public function getCodeHash(): string
+    public function getCodeHash(): ?string
     {
         return $this->codeHash;
     }
 
-    public function setCodeHash(string $codeHash): self
+    public function setCodeHash(?string $codeHash): self
     {
         $this->codeHash = $codeHash;
+
+        return $this;
+    }
+
+    public function getFactor(): string
+    {
+        return $this->factor;
+    }
+
+    public function setFactor(string $factor): self
+    {
+        $this->factor = $factor;
 
         return $this;
     }

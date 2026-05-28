@@ -8,11 +8,12 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Multi-factor confirmation service.
+ * Multi-factor / step-up confirmation orchestration.
  *
- * Generates a random one-time code, stores only its hash, and delivers it by email
- * (Postmark in production, Mailpit locally). This is a full MFA flow — there is no fixed
- * code. The same flow could be extended to TOTP or SMS by adding another delivery channel.
+ * Each {@see MfaChallenge} carries a factor — `email_otp` (out-of-band step-up; not true
+ * MFA on its own) or `totp` (RFC 6238 authenticator-app code; real possession factor).
+ * {@see verify()} dispatches verification to the right backend by factor; attempt counting,
+ * expiry and lockout are shared.
  */
 class MfaService
 {
@@ -21,11 +22,13 @@ class MfaService
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly AppMailer $mailer,
+        private readonly TotpService $totp,
         private readonly LoggerInterface $logger,
         private readonly int $codeTtlSeconds,
     ) {
     }
 
+    /** Email-OTP step-up: generate a random code, hash it, store it, email the user. */
     public function createChallenge(User $user, string $purpose, ?int $transactionId = null): MfaChallenge
     {
         $code = $this->generateCode();
@@ -34,6 +37,7 @@ class MfaService
         $challenge->setUser($user)
             ->setPurpose($purpose)
             ->setRelatedTransactionId($transactionId)
+            ->setFactor(MfaChallenge::FACTOR_EMAIL_OTP)
             ->setExpiresAt(new \DateTimeImmutable("+{$this->codeTtlSeconds} seconds"))
             // Code stored as a hash only — never persisted in clear text.
             ->setCodeHash(password_hash($code, \PASSWORD_BCRYPT));
@@ -41,8 +45,6 @@ class MfaService
         $this->em->persist($challenge);
         $this->em->flush();
 
-        // Deliver the code. A delivery failure must not destroy the challenge (the code is
-        // recoverable from logs/Mailpit in dev), so we log instead of throwing.
         try {
             $this->mailer->sendMfaCode($user, $code, $this->codeTtlSeconds);
         } catch (\Throwable $e) {
@@ -52,6 +54,26 @@ class MfaService
                 'error' => $e->getMessage(),
             ]);
         }
+
+        return $challenge;
+    }
+
+    /**
+     * TOTP challenge: no code is stored (the code is derived from secret+time on each
+     * verification); the row exists purely to track attempts/lockout for this transaction.
+     */
+    public function createTotpChallenge(User $user, string $purpose, ?int $transactionId = null): MfaChallenge
+    {
+        $challenge = new MfaChallenge();
+        $challenge->setUser($user)
+            ->setPurpose($purpose)
+            ->setRelatedTransactionId($transactionId)
+            ->setFactor(MfaChallenge::FACTOR_TOTP)
+            ->setExpiresAt(new \DateTimeImmutable("+{$this->codeTtlSeconds} seconds"))
+            ->setCodeHash(null);
+
+        $this->em->persist($challenge);
+        $this->em->flush();
 
         return $challenge;
     }
@@ -71,7 +93,14 @@ class MfaService
 
         $challenge->incrementAttempts();
 
-        if (!password_verify($code, $challenge->getCodeHash())) {
+        $valid = match ($challenge->getFactor()) {
+            MfaChallenge::FACTOR_TOTP => $this->totp->verify($challenge->getUser(), $code),
+            // FACTOR_EMAIL_OTP (default): bcrypt-compare the entered code with the stored hash.
+            default => null !== $challenge->getCodeHash()
+                && password_verify($code, $challenge->getCodeHash()),
+        };
+
+        if (!$valid) {
             if ($challenge->getAttempts() >= self::MAX_ATTEMPTS) {
                 $challenge->setStatus(MfaChallenge::STATUS_FAILED);
             }

@@ -64,11 +64,19 @@ open http://localhost:5173
 1. **Log in** as the client → dashboard with three accounts + history.
 2. **New payment** of a small amount → completes immediately; the receipt email is sent
    **asynchronously by the worker** (view it at http://localhost:8025).
-3. **New payment ≥ 10,000** → triggers **MFA**: a random code is **emailed**. Open
-   [Mailpit](http://localhost:8025), copy the code, and confirm.
-4. Try a payment that's too large → rejected (insufficient balance) server-side.
-5. Log in as **admin** → review **users** (block/unblock), **payments**, and the
-   **immutable audit log**.
+3. **Enable real MFA** (recommended) → **Security** in the nav → "Set up authenticator app".
+   The page shows a QR + secret. Scan it with Google Authenticator / 1Password / Authy /
+   Bitwarden — *or skip the phone in dev* with
+   `docker compose exec backend php bin/console app:totp client@example.com` and paste
+   the code shown. Once enrolled, risky payments demand a code from the authenticator —
+   this is the **real MFA possession factor** (password + authenticator device).
+4. **New payment ≥ 10,000** →
+   - If MFA is enrolled: enter a code from your authenticator (true MFA).
+   - Otherwise: a one-time code is **emailed** (Mailpit at http://localhost:8025) — that
+     is *step-up confirmation*, not true MFA.
+5. Try a payment that's too large → rejected (insufficient balance) server-side.
+6. Log in as **admin** → review **users** (block/unblock), **payments**, and the
+   **immutable audit log** (rows tag `factor: 'totp' | 'email_otp'`).
 
 ## Architecture coverage
 
@@ -76,8 +84,10 @@ Every component of the architecture is accounted for. See
 **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full component-by-component map.
 Highlights:
 
-- **Auth Service** — JWT (lexik), password hashing, **real emailed MFA** for risky payments
-  (random code via Postmark / Mailpit).
+- **Auth Service** — JWT (lexik), password hashing, **real MFA via TOTP** (RFC 6238 — Google
+  Authenticator / 1Password / Authy …) when the user enrolls; falls back to **emailed OTP
+  step-up** (Postmark / Mailpit) otherwise. The same `/payments/{id}/confirm` endpoint
+  dispatches by factor; audit metadata records which.
 - **RBAC** — `ROLE_CLIENT` / `ROLE_EMPLOYEE` / `ROLE_ADMIN`, role hierarchy + an account
   ownership voter.
 - **Payment Service** — server-side ownership, balance, limit and risk checks.
@@ -97,7 +107,7 @@ Highlights:
 | Password hashing | `security.yaml` (`auto` = argon2id/bcrypt) |
 | Authentication (tokens) | lexik JWT, stateless `^/api` firewall |
 | Authorization (RBAC) | role hierarchy, `access_control`, `AccountVoter` |
-| MFA (real) | `MfaService` emails a random code (Postmark/Mailpit) to confirm risky payments |
+| MFA (real) | `TotpService` — RFC 6238 authenticator-app code (possession factor, AAL2). `MfaService` falls back to emailed OTP step-up for users not yet enrolled. Audit tags `factor: 'totp' \| 'email_otp'`. |
 | Input validation | Symfony Validator on request DTOs |
 | Login rate limiting | `rate_limiter.yaml` + `AuthController` |
 | Audit logging | `audit_logs` + `AuditLogger` |
@@ -133,7 +143,7 @@ https://api.bank-demo.example.com  → Cloudflare DNS/WAF/TLS → DigitalOcean A
 
 | Capability | Locally | Production |
 |---|---|---|
-| **MFA** | **real email** (random code via Mailpit) | **real email** via Postmark (same code path) |
+| **MFA** | **real TOTP** (Google Authenticator / `app:totp` CLI) when enrolled; emailed OTP step-up via Mailpit otherwise | **real TOTP** + emailed OTP via Postmark |
 | **Email notifications** | **really sent** to Mailpit | Postmark |
 | **Message broker / worker** | **real** Doctrine queue + worker container | DO worker component (or Redis/RabbitMQ) |
 | External payment gateway | mock adapter | real card network / partner bank API |

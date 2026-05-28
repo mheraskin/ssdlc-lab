@@ -4,6 +4,7 @@ export interface User {
 	fullName: string;
 	roles: string[];
 	status: string;
+	totpEnabled: boolean;
 	createdAt: string;
 }
 

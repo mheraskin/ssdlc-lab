@@ -1,9 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { dev } from '$app/environment';
+	import { page } from '$app/state';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	// Pulled from layout data — true ⇒ user enrolled an authenticator (real MFA path),
+	// false ⇒ confirmation falls back to emailed step-up code.
+	const usesTotp = $derived(Boolean(page.data.user?.totpEnabled));
 </script>
 
 <h1>New payment</h1>
@@ -24,12 +29,19 @@
 {:else if form?.kind === 'mfa'}
 	<div class="card panel">
 		<div class="mfa-icon">🔐</div>
-		<h2>Confirm your payment</h2>
+		<h2>{usesTotp ? 'Real MFA: enter the code from your authenticator' : 'Confirm your payment'}</h2>
 		<p class="lead">{form.message}</p>
-		{#if dev}
+		{#if dev && usesTotp}
+			<div class="alert alert-info">
+				Dev: no phone needed — get the current code with
+				<code>docker compose exec backend php bin/console app:totp {page.data.user?.email}</code>
+			</div>
+		{:else if dev}
 			<div class="alert alert-info">
 				Dev: emails are captured by Mailpit — open
 				<a href="http://localhost:8025" target="_blank" rel="noreferrer">localhost:8025</a> to read your code.
+				<br />Enable real MFA in
+				<a href="/settings/2fa">Security settings</a> to require a code from an authenticator instead.
 			</div>
 		{/if}
 		{#if form.error}<div class="alert alert-error">{form.error}</div>{/if}
@@ -73,7 +85,10 @@
 			</label>
 			<button type="submit" class="btn btn-primary">Send payment</button>
 		</form>
-		<p class="tip">💡 Try an amount ≥ 10,000 to trigger the emailed MFA confirmation step.</p>
+		<p class="tip">
+			💡 Try an amount ≥ 10,000 to trigger the second-factor confirmation step
+			({usesTotp ? 'authenticator code — real MFA' : 'emailed code — step-up only'}).
+		</p>
 	</div>
 {/if}
 

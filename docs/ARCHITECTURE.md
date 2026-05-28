@@ -38,7 +38,7 @@ deploy target, **M** = mocked/simulated (labelled, with the production equivalen
 | 8 | WAF + Firewall | D + C | Cloudflare managed WAF; security headers via `SecurityHeadersSubscriber` + frontend `hooks.server.ts` |
 | 9 | Load Balancer / TLS termination | D | Cloudflare + DO App Platform |
 | 10 | API Gateway (rate limit, routing) | C + D | SvelteKit BFF proxy `routes/api/[...path]`; Symfony login limiter `rate_limiter.yaml` + `AuthController`; optional `cloudflare/worker-gateway.js` |
-| 11 | Auth Service (MFA, tokens) | C | `AuthController`, lexik JWT; `MfaService` emails a random one-time code (`AppMailer` → Postmark/Mailpit) — real MFA, no fixed code |
+| 11 | Auth Service (MFA, tokens) | C | `AuthController`, lexik JWT. **Real MFA via TOTP** (`TotpService`, RFC 6238 — works with Google Authenticator / 1Password / Authy / Bitwarden) once enrolled at `/settings/2fa`. Falls back to emailed OTP step-up (`MfaService` + `AppMailer` → Postmark/Mailpit). Audit metadata tags `factor: 'totp'` or `factor: 'email_otp'`. |
 | 12 | User / Profile Service | C | `User` entity, `GET /api/me` |
 | 13 | Account Service | C | `Account` entity, `AccountController` (own accounts only) |
 | 14 | Payment Service | C | `PaymentService` (ownership, balance, limits, risk, MFA) |

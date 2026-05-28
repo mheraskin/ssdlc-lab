@@ -94,20 +94,25 @@ class PaymentService
             $this->em->persist($transaction);
             $this->em->flush();
 
-            $challenge = $this->mfa->createChallenge(
-                $user,
-                MfaChallenge::PURPOSE_PAYMENT_CONFIRM,
-                $transaction->getId(),
-            );
+            // Real MFA when the user has enrolled an authenticator (TOTP = possession factor).
+            // Falls back to email-OTP step-up otherwise (single factor + delivery channel).
+            $useTotp = $user->isTotpEnabled();
+            $challenge = $useTotp
+                ? $this->mfa->createTotpChallenge($user, MfaChallenge::PURPOSE_PAYMENT_CONFIRM, $transaction->getId())
+                : $this->mfa->createChallenge($user, MfaChallenge::PURPOSE_PAYMENT_CONFIRM, $transaction->getId());
 
+            $factor = $useTotp ? MfaChallenge::FACTOR_TOTP : MfaChallenge::FACTOR_EMAIL_OTP;
             $this->audit->log(AuditLog::PAYMENT_MFA_REQUIRED, actor: $user, entityType: 'Transaction', entityId: (string) $transaction->getId(), metadata: [
                 'risk_reason' => $decision->reason,
                 'mfa_challenge_id' => $challenge->getId(),
+                'factor' => $factor,
             ]);
 
             return PaymentResult::mfaRequired(
                 $transaction,
-                'A confirmation code has been emailed to you. Enter it below to complete the payment.',
+                $useTotp
+                    ? 'Open your authenticator app and enter the 6-digit code to confirm this payment.'
+                    : 'A confirmation code has been emailed to you. Enter it below to complete the payment.',
             );
         }
 
@@ -140,15 +145,19 @@ class PaymentService
             return PaymentResult::rejected($transaction, 'No active confirmation challenge. Please restart the payment.');
         }
 
+        $factor = $challenge->getFactor();
         if (!$this->mfa->verify($challenge, $code)) {
             $this->audit->log(AuditLog::MFA_FAILED, actor: $user, entityType: 'Transaction', entityId: (string) $transaction->getId(), metadata: [
                 'attempts' => $challenge->getAttempts(),
+                'factor' => $factor,
             ]);
 
             return PaymentResult::rejected($transaction, 'Invalid or expired confirmation code.');
         }
 
-        $this->audit->log(AuditLog::MFA_SUCCESS, actor: $user, entityType: 'Transaction', entityId: (string) $transaction->getId());
+        $this->audit->log(AuditLog::MFA_SUCCESS, actor: $user, entityType: 'Transaction', entityId: (string) $transaction->getId(), metadata: [
+            'factor' => $factor,
+        ]);
 
         // Re-validate balance at confirmation time (it may have changed since creation).
         $source = $transaction->getSourceAccount();
@@ -166,6 +175,7 @@ class PaymentService
             'amount_cents' => $transaction->getAmountCents(),
             'currency' => $transaction->getCurrency(),
             'confirmed_via_mfa' => true,
+            'factor' => $factor,
         ]);
         $this->bus->dispatch(new PaymentCreatedMessage((int) $transaction->getId()));
 

@@ -14,7 +14,8 @@
 		{ href: '/dashboard', label: 'Dashboard' },
 		{ href: '/accounts', label: 'Accounts' },
 		{ href: '/transactions', label: 'Transactions' },
-		{ href: '/payments/new', label: 'New payment' }
+		{ href: '/payments/new', label: 'New payment' },
+		{ href: '/settings/2fa', label: 'Security' }
 	];
 
 	const initials = $derived(

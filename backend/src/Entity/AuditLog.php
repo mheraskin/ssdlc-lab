@@ -35,6 +35,11 @@ class AuditLog
     // Admin events
     public const ADMIN_VIEWED_AUDIT_LOGS = 'admin_viewed_audit_logs';
     public const ADMIN_CHANGED_USER_STATUS = 'admin_changed_user_status';
+    // TOTP (authenticator-app) lifecycle events. Verification reuses MFA_SUCCESS / MFA_FAILED
+    // with metadata `factor: 'totp'` so success/failure paths are uniform across factors.
+    public const TOTP_ENROLLMENT_STARTED = 'totp_enrollment_started';
+    public const TOTP_ENROLLED = 'totp_enrolled';
+    public const TOTP_DISABLED = 'totp_disabled';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

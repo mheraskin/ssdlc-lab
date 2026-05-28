@@ -6,6 +6,7 @@ use App\Entity\MfaChallenge;
 use App\Entity\User;
 use App\Service\AppMailer;
 use App\Service\MfaService;
+use App\Service\TotpService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -19,6 +20,7 @@ class MfaServiceTest extends TestCase
         return new MfaService(
             $this->createStub(EntityManagerInterface::class),
             $mailer ?? $this->createStub(AppMailer::class),
+            $this->createStub(TotpService::class),
             new NullLogger(),
             300,
         );

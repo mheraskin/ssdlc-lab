@@ -22,6 +22,7 @@ final class EntityPresenter
             'fullName' => $user->getFullName(),
             'roles' => $user->getRoles(),
             'status' => $user->getStatus(),
+            'totpEnabled' => $user->isTotpEnabled(),
             'createdAt' => $user->getCreatedAt()->format(\DATE_ATOM),
         ];
     }
